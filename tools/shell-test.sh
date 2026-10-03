@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="${1:-$(mktemp -d)}"
 LOCALE="${2:-en_US.UTF-8}"
-SECONDS_TO_RUN="${CS_TEST_SECONDS:-45}"
+SECONDS_TO_RUN="${CS_TEST_SECONDS:-80}"
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 

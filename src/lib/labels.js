@@ -3,7 +3,7 @@
 // the shell (extension.js) and the preferences app (prefs.js), which each have
 // their own, share one set of strings.
 
-import {fmt, formatBytes, formatPercent, formatReading, truncate} from './format.js';
+import {fmt, formatBytes, formatPercent, formatReading, isolate, truncate} from './format.js';
 
 /**
  * @param {Function} _ gettext for the extension's domain
@@ -27,9 +27,9 @@ export function makeLabels(_) {
         case 'board':
             return chip.name === 'acpitz' ? _('ACPI thermal zone') : fmt(_('Board (%s)'), chip.name);
         case 'memory':
-            return fmt(_('RAM module %s'), chip.devId);
+            return fmt(_('RAM module %s'), chip.device);
         case 'storage':
-            return chip.name === 'nvme' ? `NVMe ${chip.devId}` : fmt(_('Disk %s'), chip.devId);
+            return chip.name === 'nvme' ? `NVMe ${chip.device}` : fmt(_('Disk %s'), chip.device);
         case 'gpu': {
             const gpu = gpus.find(g => g.slot === chip.devId);
             return gpu ? truncate(gpu.name, 24) : _('GPU');
@@ -73,7 +73,7 @@ export function makeLabels(_) {
             };
         case 'disk':
             return {
-                title: fmt(_('Disk almost full: %s'), p.mountpoint),
+                title: fmt(_('Disk almost full: %s'), isolate(p.mountpoint)),
                 body: fmt(_('Only %s free (%s).'), formatBytes(p.free), formatPercent(p.freePercent)),
             };
         case 'swap':

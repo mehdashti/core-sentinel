@@ -10,6 +10,7 @@
 export const TEMP_HYSTERESIS = 5; // °C below the limit before a heat alert ends
 export const TEMP_HOLD = 5; // s above the limit before it counts (ignores spikes)
 export const PRESSURE_HOLD = 10; // s for the 10-second pressure averages
+export const SPIN_CONFIRM = 10; // s a fan must spin without a break to count as connected
 
 const MiB = 1024 * 1024;
 
@@ -26,9 +27,10 @@ const MiB = 1024 * 1024;
 /**
  * A fan that has never been seen spinning is treated as not connected: an
  * empty header reads 0 RPM while its PWM output still drives it, which would
- * otherwise look exactly like a stalled fan. Fans seen spinning are reported in
- * `spinning` so the caller can remember them across sessions; from then on a
- * stop is an alarm, even right after boot.
+ * otherwise look exactly like a stalled fan. Fans spinning now but not known
+ * yet are reported in `spinning`; once SpinTracker confirms one, the caller
+ * remembers it across sessions, and from then on a stop is an alarm, even
+ * right after boot.
  *
  * @param {object} snapshot Monitor.sample() result
  * @param {object} ctx
@@ -74,6 +76,8 @@ export function buildChecks(snapshot, {overrides, knownFans, settings, labelOf})
 
     if (settings.alertDisk) {
         for (const fs of snapshot.storage?.filesystems ?? []) {
+            if (settings.diskIgnore?.has(fs.mountpoint)) // meant to stay nearly full (an EFI partition)
+                continue;
             checks.push({
                 key: `disk:${fs.mountpoint}`,
                 type: 'disk',
@@ -150,6 +154,41 @@ function pressureCheck(type, value, threshold, hold, recoverFactor) {
         hold,
         params: {value},
     };
+}
+
+/**
+ * Confirms that a fan is connected: it has to keep spinning for a while. An
+ * empty header can read a few RPM of noise for a moment (seen: 10, 49, 85),
+ * and remembering it then would turn its normal 0 RPM into a stall alarm.
+ */
+export class SpinTracker {
+    constructor() {
+        this._since = new Map();
+    }
+
+    /**
+     * @param {string[]} spinning keys of unknown fans spinning now (buildChecks)
+     * @param {number} now seconds on a monotonic clock
+     * @param {number} seconds how long the spin must last
+     * @returns {string[]} keys that have spun without a break for `seconds`
+     */
+    update(spinning, now, seconds = SPIN_CONFIRM) {
+        const current = new Set(spinning);
+        for (const key of [...this._since.keys()]) {
+            if (!current.has(key))
+                this._since.delete(key);
+        }
+        const confirmed = [];
+        for (const key of current) {
+            const since = this._since.get(key) ?? now;
+            this._since.set(key, since);
+            if (now - since >= seconds) {
+                confirmed.push(key);
+                this._since.delete(key);
+            }
+        }
+        return confirmed;
+    }
 }
 
 export class AlertEngine {

@@ -6,7 +6,7 @@ import {readPressure} from './pressure.js';
 import {readMemory} from './memory.js';
 import {StorageSampler} from './storage.js';
 import {listGpus, readGpu} from './gpu.js';
-import {scanHwmon, readChip} from './hwmon.js';
+import {scanHwmon, readChips} from './hwmon.js';
 import {monotonicSeconds} from './io.js';
 
 // Sensor chips and GPUs rarely change after boot, but a driver can load late
@@ -27,7 +27,7 @@ export class Monitor {
     }
 
     async _rescan() {
-        const [chips, gpus] = await Promise.all([scanHwmon(this._chips), listGpus()]);
+        const [chips, gpus] = await Promise.all([scanHwmon(this._chips), listGpus(this._gpus)]);
         this._chips = chips;
         this._gpus = gpus;
         this._scannedAt = monotonicSeconds();
@@ -44,7 +44,7 @@ export class Monitor {
             readPressure(),
             readMemory(),
             this._storage.sample(),
-            Promise.all(chips.map(readChip)),
+            readChips(chips),
             Promise.all(gpus.map(readGpu)),
         ]);
         return {

@@ -14,19 +14,30 @@ gettext domain `core-sentinel`.
 - `src/ui/`: shell-only (panel button, menu, notifications).
 - `tools/snapshot.js`: data layer against the real machine. `tools/shell-test.sh`:
   isolated headless GNOME Shell + `tests/shell/harness@core-sentinel.test`,
-  which screenshots the panel, menu, submenus and prefs into OUT_DIR.
+  which screenshots the panel, menu, submenus, a notification and every prefs
+  page into OUT_DIR, and checks lock/unlock in `report.json`.
 
 ## Rules
 
 - Never block the shell: every /proc and /sys read in the shell goes through
-  `lib/io.js` (async). Never read a device in runtime suspend (`power/runtime_status`).
+  `lib/io.js` (async; a file whose last read is still pending reads as null).
+  Never read a device in runtime suspend (`power/runtime_status`).
 - No network, no subprocesses, no root.
-- Sensor settings are keyed by `name@device/kindN`, never by `hwmonN`.
+- Sensor settings are keyed by `name@device/kindN`, where device is a bus
+  address (`stableDeviceId()` in `lib/hwmon.js`), never a probe-order number
+  (`hwmonN`, `nvmeN`, `phyN`, an i2c bus).
 - `disable()` must undo everything `enable()` did (EGO review requirement).
+- Session modes `user` and `unlock-dialog`: monitoring and notifications go on
+  while locked, the panel button is hidden (`_syncLocked`). EGO requires the
+  comment above `disable()` that explains why.
+- User-visible numbers go through `lib/format.js` (locale digits), never
+  `toFixed()` or a template literal.
 - Every user-visible string goes through `_()`. After changing strings: `make pot`,
   then update `po/fa.po`; placeholders keep their English order (`fmt()` fills
   them in sequence).
-- RTL: menu rows get a leading RLM in RTL locales (`ui/indicator.js` RowList).
+- RTL: menu rows and composed prefs subtitles get a leading RLM in RTL locales
+  (`RowList` in `ui/indicator.js`, `rtl()` in `prefs.js`); paths go through
+  `isolate()`.
 
 ## Before calling a change done
 

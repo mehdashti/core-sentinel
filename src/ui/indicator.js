@@ -11,10 +11,9 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {fmt, formatBytes, formatPercent, formatRate, formatReading, meter, truncate} from '../lib/format.js';
-
-/** Panel item ids, in the order they appear. */
-export const PANEL_ITEMS = ['cpu', 'pressure', 'cpu-temp', 'memory', 'gpu', 'alert'];
+import {fmt, formatBytes, formatNumber, formatPercent, formatRate, formatReading, isolate, meter, truncate}
+    from '../lib/format.js';
+import {PANEL_ITEMS} from '../lib/panel.js';
 
 // PSI "some" avg10 thresholds for the pressure dots, in %
 const PRESSURE_WARN = 5;
@@ -23,7 +22,7 @@ const PRESSURE_CRIT = 25;
 // A row's base direction comes from its first strong character, so in an RTL
 // locale a row opening with "RX 550" or "nvme0n1" would be laid out
 // left-to-right and scramble its translated words. A leading RLM fixes the base.
-const RLM = '‏';
+const RLM = '\u200F';
 
 /** A run of read-only menu rows that grows and shrinks with its data. */
 class RowList {
@@ -169,21 +168,21 @@ class Indicator extends PanelMenu.Button {
     _renderPanel() {
         const {snapshot: s, state} = this._last;
         if (s.cpu)
-            this._panel.cpu.text = `⬡ ${Math.round(s.cpu.real)}%`;
+            this._panel.cpu.text = `⬡ ${formatPercent(s.cpu.real)}`;
         ['cpu', 'memory', 'io'].forEach((resource, i) => {
             this._dots[i].style_class = `cs-dot cs-dot-${pressureLevel(s.pressure?.[resource])}`;
         });
         const cpuTemps = s.chips
             .filter(chip => chip.category === 'cpu' && !chip.asleep)
             .flatMap(chip => chip.channels
-                .filter(ch => ch.kind === 'temp')
+                .filter(ch => ch.kind === 'temp' && !state.overrides[ch.key]?.hidden)
                 .map(ch => chip.values.get(ch.key)?.value))
             .filter(v => v !== null && v !== undefined);
-        this._panel['cpu-temp'].text = cpuTemps.length ? `${Math.round(Math.max(...cpuTemps))}°` : '–°';
+        this._panel['cpu-temp'].text = cpuTemps.length ? `${formatNumber(Math.max(...cpuTemps))}°` : '–°';
         if (s.memory?.total)
-            this._panel.memory.text = `▦ ${Math.round(100 * s.memory.used / s.memory.total)}%`;
+            this._panel.memory.text = `▦ ${formatPercent(100 * s.memory.used / s.memory.total)}`;
         const busy = s.gpus.filter(g => !g.asleep && g.busy !== null).map(g => g.busy);
-        this._panel.gpu.text = busy.length ? `▣ ${Math.max(...busy)}%` : '▣ –';
+        this._panel.gpu.text = busy.length ? `▣ ${formatPercent(Math.max(...busy))}` : '▣ –';
         this._hasAlerts = state.alerts.length > 0;
         this._applyVisibility();
     }
@@ -199,7 +198,7 @@ class Indicator extends PanelMenu.Button {
         this._renderCpu(s, active);
         this._renderMemory(s, active);
         this._renderStorage(s, active);
-        this._renderGpus(s);
+        this._renderGpus(s, state);
         this._renderSensors(s, state, active);
     }
 
@@ -222,7 +221,7 @@ class Indicator extends PanelMenu.Button {
         }
         this._cpu.rows.set(rows);
         this._cpu.subs[0].rows.set((s.cpu?.perCore ?? []).map((core, i) => ({
-            text: `${fmt(_('Core %d'), i).padEnd(8)} ${meter(core.percent)} ${formatPercent(core.percent).padStart(4)}  ${core.cpus.join('+')}`,
+            text: `${fmt(_('Core %d'), i).padEnd(8)} ${meter(core.percent)} ${formatPercent(core.percent).padStart(4)}  ${core.cpus.map(cpu => formatNumber(cpu)).join('+')}`,
             mono: true,
         })));
     }
@@ -240,7 +239,7 @@ class Indicator extends PanelMenu.Button {
                 rows.push({
                     text: mem.zram.ratio
                         ? fmt(_('zram: %s stored in %s of RAM (%s:1)'), formatBytes(mem.zram.used),
-                            formatBytes(mem.zram.ram), mem.zram.ratio.toFixed(1))
+                            formatBytes(mem.zram.ram), formatNumber(mem.zram.ratio, 1))
                         : fmt(_('zram: %s of %s used'), formatBytes(mem.zram.used), formatBytes(mem.zram.size)),
                 });
             }
@@ -267,7 +266,7 @@ class Indicator extends PanelMenu.Button {
         const rows = [];
         for (const fs of s.storage?.filesystems ?? []) {
             rows.push({
-                text: fmt(_('%s: %s free of %s (%s used)'), fs.mountpoint, formatBytes(fs.free),
+                text: fmt(_('%s: %s free of %s (%s used)'), isolate(fs.mountpoint), formatBytes(fs.free),
                     formatBytes(fs.size), formatPercent(fs.percent)),
                 bad: active.has(`disk:${fs.mountpoint}`),
             });
@@ -289,7 +288,7 @@ class Indicator extends PanelMenu.Button {
         this._storage.rows.set(rows);
     }
 
-    _renderGpus(s) {
+    _renderGpus(s, state) {
         const rows = [];
         for (const gpu of s.gpus) {
             const name = truncate(gpu.name, 32);
@@ -304,7 +303,8 @@ class Indicator extends PanelMenu.Button {
             const chip = s.chips.find(c => c.devId === gpu.slot && !c.asleep);
             const parts = [];
             for (const kind of ['temp', 'fan', 'power']) {
-                const ch = chip?.channels.find(c => c.kind === kind && (kind !== 'power' || c.hasCap));
+                const ch = chip?.channels.find(c => c.kind === kind && (kind !== 'power' || c.hasCap) &&
+                    !state.overrides[c.key]?.hidden);
                 const value = ch ? chip.values.get(ch.key)?.value : null;
                 if (value !== null && value !== undefined)
                     parts.push(formatReading(kind, value));
@@ -354,7 +354,7 @@ class Indicator extends PanelMenu.Button {
         [temps, fans, others].forEach((rows, i) => {
             const sub = this._sensors.subs[i];
             sub.rows.set(rows);
-            sub.item.label.text = `${sub.title} (${rows.length})`;
+            sub.item.label.text = `${sub.title} (${formatNumber(rows.length)})`;
             sub.item.visible = rows.length > 0;
         });
     }

@@ -2,5 +2,6 @@
   "uuid": "harness@core-sentinel.test",
   "name": "Core Sentinel test harness",
   "description": "Test-only: screenshots Core Sentinel in a headless shell.",
-  "shell-version": ["48", "49", "50"]
+  "shell-version": ["48", "49", "50"],
+  "session-modes": ["user", "unlock-dialog"]
 }

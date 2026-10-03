@@ -51,6 +51,11 @@
       <range min="1" max="50"/>
       <summary>Free space (%) below which a filesystem counts as almost full</summary>
     </key>
+    <key name="disk-alert-ignore" type="as">
+      <default>[]</default>
+      <summary>Filesystems that never raise a space alert</summary>
+      <description>Mount points, such as '/boot/efi'.</description>
+    </key>
     <key name="alert-swap" type="b">
       <default>true</default>
       <summary>Alert when memory spills into swap on disk</summary>

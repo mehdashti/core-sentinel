@@ -9,6 +9,7 @@ const gjsGlobals = {
     print: 'readonly',
     printerr: 'readonly',
     console: 'readonly',
+    global: 'readonly',
     TextDecoder: 'readonly',
     TextEncoder: 'readonly',
     globalThis: 'readonly',

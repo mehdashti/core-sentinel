@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Core Sentinel\n"
 "Report-Msgid-Bugs-To: https://github.com/mehdashti/core-sentinel/issues\n"
-"POT-Creation-Date: 2026-10-03 12:10+0300\n"
+"POT-Creation-Date: 2026-10-03 13:41+0300\n"
 "PO-Revision-Date: 2026-10-03 12:10+0300\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -16,241 +16,265 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: src/prefs.js:55
+#: src/prefs.js:69
 msgid "General"
 msgstr "عمومی"
 
-#: src/prefs.js:57
+#: src/prefs.js:71
 msgid "Readings"
 msgstr "خواندن داده‌ها"
 
-#: src/prefs.js:58
+#: src/prefs.js:72
 msgid "Update interval"
 msgstr "فاصلهٔ به‌روزرسانی"
 
-#: src/prefs.js:58
+#: src/prefs.js:72
 msgid "Seconds between readings"
 msgstr "ثانیه بین دو خواندن"
 
-#: src/prefs.js:60
+#: src/prefs.js:74
 msgid "Top bar"
 msgstr "نوار بالا"
 
-#: src/prefs.js:60
+#: src/prefs.js:74
 msgid "What the top bar shows. The menu always shows everything."
 msgstr "آنچه نوار بالا نشان می‌دهد. منو همیشه همه چیز را نشان می‌دهد."
 
-#: src/prefs.js:62
+#: src/prefs.js:76
 msgid "CPU load over physical cores"
 msgstr "بار CPU روی هسته‌های فیزیکی"
 
-#: src/prefs.js:63
+#: src/prefs.js:77
 msgid "Pressure dots for CPU, memory and I/O"
 msgstr "نقطه‌های فشار برای CPU، حافظه و ورودی/خروجی"
 
-#: src/prefs.js:64
+#: src/prefs.js:78
 msgid "CPU temperature"
 msgstr "دمای CPU"
 
-#: src/prefs.js:65
+#: src/prefs.js:79
 msgid "Memory use"
 msgstr "مصرف حافظه"
 
-#: src/prefs.js:66
+#: src/prefs.js:80
 msgid "GPU load"
 msgstr "بار GPU"
 
-#: src/prefs.js:67
+#: src/prefs.js:81
 msgid "Warning icon while an alert is active"
 msgstr "نماد هشدار تا وقتی هشداری فعال است"
 
-#: src/prefs.js:85
+#: src/prefs.js:99
 msgid "Alerts"
 msgstr "هشدارها"
 
-#: src/prefs.js:87 src/ui/indicator.js:143
+#: src/prefs.js:101 src/ui/indicator.js:149
 msgid "Fans"
 msgstr "فن‌ها"
 
-#: src/prefs.js:88
+#: src/prefs.js:102
 msgid ""
 "A fan that has never been seen spinning is treated as not connected and "
 "raises no alerts."
 msgstr "فنی که هرگز در حال چرخش دیده نشده، وصل‌نشده حساب می‌شود و هشداری نمی‌دهد."
 
-#: src/prefs.js:89
+#: src/prefs.js:103
 msgid "Alert when a fan stalls or stops"
 msgstr "هشدار وقتی فنی گیر کند یا بایستد"
 
-#: src/prefs.js:90
+#: src/prefs.js:104
 msgid "Stall threshold"
 msgstr "آستانهٔ گیر کردن"
 
-#: src/prefs.js:91
+#: src/prefs.js:105
 msgid "PWM duty (%) above which a fan reporting 0 RPM counts as stalled"
 msgstr "درصد PWM که بالاتر از آن، فنی با دور صفر گیرکرده حساب می‌شود"
 
-#: src/prefs.js:92
+#: src/prefs.js:106
 msgid "Grace period"
 msgstr "مهلت"
 
-#: src/prefs.js:93
+#: src/prefs.js:107
 msgid "Seconds a fan problem must last before an alert"
 msgstr "چند ثانیه مشکل فن باید ادامه پیدا کند تا هشدار داده شود"
 
-#: src/prefs.js:95 src/ui/indicator.js:143
+#: src/prefs.js:109 src/ui/indicator.js:149
 msgid "Temperatures"
 msgstr "دماها"
 
-#: src/prefs.js:96
+#: src/prefs.js:110
 msgid ""
 "Each sensor uses the limit its hardware reports. Set your own on the Sensors "
 "page."
-msgstr "هر سنسور از حدی استفاده می‌کند که سخت‌افزارش گزارش می‌دهد. حد دلخواه را در صفحهٔ سنسورها تنظیم کنید."
+msgstr ""
+"هر سنسور از حدی استفاده می‌کند که سخت‌افزارش گزارش می‌دهد. حد دلخواه را در صفحهٔ "
+"سنسورها تنظیم کنید."
 
-#: src/prefs.js:97
+#: src/prefs.js:111
 msgid "Alert when a sensor reaches its limit"
 msgstr "هشدار وقتی سنسوری به حدش برسد"
 
-#: src/prefs.js:99 src/lib/labels.js:17 src/ui/indicator.js:141
+#: src/prefs.js:113 src/lib/labels.js:17 src/ui/indicator.js:147
 msgid "Storage"
 msgstr "ذخیره‌سازی"
 
-#: src/prefs.js:100
+#: src/prefs.js:114
 msgid "Alert when a filesystem is almost full"
 msgstr "هشدار وقتی یک پارتیشن تقریباً پر شود"
 
-#: src/prefs.js:101
+#: src/prefs.js:115
 msgid "Free space threshold"
 msgstr "آستانهٔ فضای آزاد"
 
-#: src/prefs.js:102
+#: src/prefs.js:116
 msgid "Alert below this much free space (%)"
 msgstr "هشدار وقتی فضای آزاد کمتر از این درصد شود"
 
-#: src/prefs.js:104 src/lib/labels.js:16 src/ui/indicator.js:140
+#: src/prefs.js:119 src/lib/labels.js:16 src/ui/indicator.js:146
 msgid "Memory"
 msgstr "حافظه"
 
-#: src/prefs.js:105
+#: src/prefs.js:120
 msgid "Alert when memory spills into swap on disk"
 msgstr "هشدار وقتی حافظه به swap روی دیسک سرریز کند"
 
-#: src/prefs.js:106
+#: src/prefs.js:121
 msgid "Swap threshold"
 msgstr "آستانهٔ swap"
 
-#: src/prefs.js:107
+#: src/prefs.js:122
 msgid "Swap on disk (MiB) that triggers the alert"
 msgstr "مقدار swap روی دیسک (MiB) که هشدار می‌دهد"
 
-#: src/prefs.js:108
+#: src/prefs.js:123
 msgid "Alert when the system thrashes"
 msgstr "هشدار وقتی سیستم درگیر کمبود شدید حافظه شود"
 
-#: src/prefs.js:109
+#: src/prefs.js:124
 msgid "Thrashing threshold"
 msgstr "آستانهٔ کمبود شدید حافظه"
 
-#: src/prefs.js:110
+#: src/prefs.js:125
 msgid "Share of time (%) all tasks were stalled on memory, 10 s average"
-msgstr "درصد زمانی که همهٔ کارها منتظر حافظه ماندند، میانگین 10 ثانیه"
+msgstr "درصد زمانی که همهٔ کارها منتظر حافظه ماندند، میانگین ۱۰ ثانیه"
 
-#: src/prefs.js:112
+#: src/prefs.js:127
 msgid "Pressure"
 msgstr "فشار"
 
-#: src/prefs.js:112
+#: src/prefs.js:127
 msgid "0 turns an alert off."
-msgstr "مقدار 0 هشدار را خاموش می‌کند."
+msgstr "مقدار ۰ هشدار را خاموش می‌کند."
 
-#: src/prefs.js:113
+#: src/prefs.js:128
 msgid "CPU saturation"
 msgstr "اشباع CPU"
 
-#: src/prefs.js:114
+#: src/prefs.js:129
 msgid "Share of time (%) tasks waited for a CPU, 1 min average"
-msgstr "درصد زمانی که کارها منتظر CPU ماندند، میانگین 1 دقیقه"
+msgstr "درصد زمانی که کارها منتظر CPU ماندند، میانگین ۱ دقیقه"
 
-#: src/prefs.js:115
+#: src/prefs.js:130
 msgid "I/O bottleneck"
 msgstr "گلوگاه ورودی/خروجی"
 
-#: src/prefs.js:116
+#: src/prefs.js:131
 msgid "Share of time (%) all tasks were stalled on I/O, 10 s average"
-msgstr "درصد زمانی که همهٔ کارها منتظر ورودی/خروجی ماندند، میانگین 10 ثانیه"
+msgstr "درصد زمانی که همهٔ کارها منتظر ورودی/خروجی ماندند، میانگین ۱۰ ثانیه"
 
-#: src/prefs.js:118
+#: src/prefs.js:133
 msgid "Notifications"
 msgstr "اعلان‌ها"
 
-#: src/prefs.js:119
+#: src/prefs.js:134
 msgid "Notify when a problem is over"
 msgstr "اعلان وقتی مشکل برطرف شود"
 
-#: src/prefs.js:124 src/ui/indicator.js:143
+#: src/prefs.js:139
+msgid "Filesystems to watch"
+msgstr "پارتیشن‌های زیر نظر"
+
+#: src/prefs.js:140
+msgid ""
+"Switch off a filesystem that is meant to stay nearly full, such as a small "
+"EFI partition."
+msgstr ""
+"پارتیشنی را که قرار است تقریباً پر بماند، مثل یک پارتیشن کوچک EFI، خاموش کنید."
+
+#: src/prefs.js:149
+#, javascript-format
+msgid "%s free of %s"
+msgstr "%s آزاد از %s"
+
+#: src/prefs.js:149
+msgid "not mounted"
+msgstr "متصل نیست"
+
+#: src/prefs.js:165 src/ui/indicator.js:149
 msgid "Sensors"
 msgstr "سنسورها"
 
-#: src/prefs.js:125
+#: src/prefs.js:166
 msgid ""
 "Rename or hide each sensor and set its alert limits. Changes apply at once."
-msgstr "هر سنسور را تغییر نام دهید یا پنهان کنید و حدهای هشدارش را تنظیم کنید. تغییرات فوراً اعمال می‌شوند."
+msgstr ""
+"هر سنسور را تغییر نام دهید یا پنهان کنید و حدهای هشدارش را تنظیم کنید. "
+"تغییرات فوراً اعمال می‌شوند."
 
-#: src/prefs.js:147
+#: src/prefs.js:188
 msgid "not connected (never seen spinning)"
 msgstr "وصل نیست (هرگز در حال چرخش دیده نشده)"
 
-#: src/prefs.js:151
+#: src/prefs.js:192
 msgid "Show"
 msgstr "نمایش"
 
-#: src/prefs.js:155
+#: src/prefs.js:196
 msgid "Display name"
 msgstr "نام نمایشی"
 
-#: src/prefs.js:165
+#: src/prefs.js:206
 msgid "Minimum RPM"
 msgstr "حداقل دور (RPM)"
 
-#: src/prefs.js:166
+#: src/prefs.js:207
 msgid "Alert when it turns slower than this; 0 turns it off"
-msgstr "هشدار وقتی کندتر از این بچرخد؛ 0 یعنی خاموش"
+msgstr "هشدار وقتی کندتر از این بچرخد؛ ۰ یعنی خاموش"
 
-#: src/prefs.js:173
+#: src/prefs.js:214
 msgid "Stops on its own"
 msgstr "خودش می‌ایستد"
 
-#: src/prefs.js:174
+#: src/prefs.js:215
 msgid "A zero-RPM fan (some GPU and PSU fans): stopping is not an alarm"
 msgstr "فن با حالت دور صفر (بعضی فن‌های کارت گرافیک و پاور): ایستادنش خطر نیست"
 
-#: src/prefs.js:182
+#: src/prefs.js:223
 msgid "Forget this fan"
 msgstr "فراموش کردن این فن"
 
-#: src/prefs.js:183
+#: src/prefs.js:224
 msgid "Treat it as not connected until it is seen spinning again"
 msgstr "تا وقتی دوباره در حال چرخش دیده نشده، وصل‌نشده حساب شود"
 
-#: src/prefs.js:185
+#: src/prefs.js:226
 msgid "Forget"
 msgstr "فراموش کن"
 
-#: src/prefs.js:195
+#: src/prefs.js:236
 msgid "Alert at (°C)"
 msgstr "هشدار در دمای (°C)"
 
-#: src/prefs.js:197
+#: src/prefs.js:238
 #, javascript-format
 msgid "0 uses the hardware limit, %s"
-msgstr "مقدار 0 یعنی حد سخت‌افزار، %s"
+msgstr "مقدار ۰ یعنی حد سخت‌افزار، %s"
 
-#: src/prefs.js:198
+#: src/prefs.js:239
 msgid "0 means no alert: the hardware reports no limit"
-msgstr "مقدار 0 یعنی بدون هشدار: سخت‌افزار حدی گزارش نمی‌کند"
+msgstr "مقدار ۰ یعنی بدون هشدار: سخت‌افزار حدی گزارش نمی‌کند"
 
-#: src/lib/labels.js:14 src/ui/indicator.js:139
+#: src/lib/labels.js:14 src/ui/indicator.js:145
 msgid "Processor"
 msgstr "پردازنده"
 
@@ -258,7 +282,7 @@ msgstr "پردازنده"
 msgid "Motherboard"
 msgstr "مادربرد"
 
-#: src/lib/labels.js:18 src/ui/indicator.js:142
+#: src/lib/labels.js:18 src/ui/indicator.js:148
 msgid "Graphics"
 msgstr "گرافیک"
 
@@ -310,7 +334,8 @@ msgstr "فن گیر کرده: %s"
 #: src/lib/labels.js:54
 #, javascript-format
 msgid "Driven at %s but reporting 0 RPM. Check the fan and its cable."
-msgstr "با %s توان راه‌اندازی شده ولی دور صفر گزارش می‌دهد. فن و کابلش را بررسی کنید."
+msgstr ""
+"با %s توان راه‌اندازی شده ولی دور صفر گزارش می‌دهد. فن و کابلش را بررسی کنید."
 
 #: src/lib/labels.js:59
 #, javascript-format
@@ -367,7 +392,7 @@ msgstr "سیستم درگیر کمبود شدید حافظه است"
 #: src/lib/labels.js:87
 #, javascript-format
 msgid "All tasks were stalled on memory %s of the last 10 seconds."
-msgstr "همهٔ کارها %s از 10 ثانیهٔ اخیر منتظر حافظه ماندند."
+msgstr "همهٔ کارها %s از ۱۰ ثانیهٔ اخیر منتظر حافظه ماندند."
 
 #: src/lib/labels.js:92
 msgid "The CPU is saturated"
@@ -385,101 +410,101 @@ msgstr "ورودی/خروجی دیسک گلوگاه شده است"
 #: src/lib/labels.js:98
 #, javascript-format
 msgid "All tasks were stalled on I/O %s of the last 10 seconds."
-msgstr "همهٔ کارها %s از 10 ثانیهٔ اخیر منتظر ورودی/خروجی ماندند."
+msgstr "همهٔ کارها %s از ۱۰ ثانیهٔ اخیر منتظر ورودی/خروجی ماندند."
 
 #: src/lib/labels.js:107
 #, javascript-format
 msgid "Back to normal: %s"
 msgstr "به حالت عادی برگشت: %s"
 
-#: src/ui/indicator.js:139
+#: src/ui/indicator.js:145
 msgid "Per-core load"
 msgstr "بار هر هسته"
 
-#: src/ui/indicator.js:143
+#: src/ui/indicator.js:149
 msgid "Voltages and power"
 msgstr "ولتاژها و توان"
 
-#: src/ui/indicator.js:146
+#: src/ui/indicator.js:152
 msgid "Settings"
 msgstr "تنظیمات"
 
-#: src/ui/indicator.js:203
+#: src/ui/indicator.js:209
 #, javascript-format
 msgid "%s on physical cores, %s on logical threads"
 msgstr "%s روی هسته‌های فیزیکی، %s روی رشته‌های منطقی"
 
-#: src/ui/indicator.js:206
+#: src/ui/indicator.js:212
 #, javascript-format
 msgid "%d cores, %d threads"
 msgstr "%d هسته، %d رشته"
 
-#: src/ui/indicator.js:211
+#: src/ui/indicator.js:217
 #, javascript-format
 msgid "Tasks waiting for a CPU: %s (10 s), %s (1 min)"
-msgstr "کارهای منتظر CPU: %s (10 ثانیه)، %s (1 دقیقه)"
+msgstr "کارهای منتظر CPU: %s (۱۰ ثانیه)، %s (۱ دقیقه)"
 
-#: src/ui/indicator.js:218
+#: src/ui/indicator.js:224
 #, javascript-format
 msgid "Core %d"
 msgstr "هسته %d"
 
-#: src/ui/indicator.js:228
+#: src/ui/indicator.js:234
 #, javascript-format
 msgid "Used %s of %s (%s), %s available"
 msgstr "مصرف %s از %s (%s)، %s در دسترس"
 
-#: src/ui/indicator.js:235
+#: src/ui/indicator.js:241
 #, javascript-format
 msgid "zram: %s stored in %s of RAM (%s:1)"
-msgstr "حافظهٔ zram: %s داده در %s از رم (%s:1)"
+msgstr "حافظهٔ zram: %s داده در %s از رم (%s:۱)"
 
-#: src/ui/indicator.js:237
+#: src/ui/indicator.js:243
 #, javascript-format
 msgid "zram: %s of %s used"
 msgstr "حافظهٔ zram: %s از %s استفاده شده"
 
-#: src/ui/indicator.js:242
+#: src/ui/indicator.js:248
 #, javascript-format
 msgid "Swap on disk: %s of %s"
 msgstr "فضای swap روی دیسک: %s از %s"
 
-#: src/ui/indicator.js:251
+#: src/ui/indicator.js:257
 #, javascript-format
 msgid "Stalled on memory: %s some, %s all tasks (10 s)"
-msgstr "منتظر حافظه: %s بعضی، %s همهٔ کارها (10 ثانیه)"
+msgstr "منتظر حافظه: %s بعضی، %s همهٔ کارها (۱۰ ثانیه)"
 
-#: src/ui/indicator.js:263
+#: src/ui/indicator.js:269
 #, javascript-format
 msgid "%s: %s free of %s (%s used)"
 msgstr "%s: %s آزاد از %s (%s مصرف‌شده)"
 
-#: src/ui/indicator.js:270
+#: src/ui/indicator.js:276
 #, javascript-format
 msgid "%s: read %s, write %s, busy %s"
 msgstr "%s: خواندن %s، نوشتن %s، مشغول %s"
 
-#: src/ui/indicator.js:277
+#: src/ui/indicator.js:283
 #, javascript-format
 msgid "Stalled on I/O: %s some, %s all tasks (10 s)"
-msgstr "منتظر ورودی/خروجی: %s بعضی، %s همهٔ کارها (10 ثانیه)"
+msgstr "منتظر ورودی/خروجی: %s بعضی، %s همهٔ کارها (۱۰ ثانیه)"
 
-#: src/ui/indicator.js:290
+#: src/ui/indicator.js:296
 #, javascript-format
 msgid "%s: asleep"
 msgstr "%s: در خواب"
 
-#: src/ui/indicator.js:294
+#: src/ui/indicator.js:300
 #, javascript-format
 msgid "%s: busy %s, VRAM %s of %s"
 msgstr "%s: مشغول %s، VRAM %s از %s"
 
-#: src/ui/indicator.js:327
+#: src/ui/indicator.js:334
 #, javascript-format
 msgid "limit %s"
 msgstr "حد %s"
 
-#: src/ui/indicator.js:334
+#: src/ui/indicator.js:341
 #, javascript-format
 msgid "%s: not connected"
 msgstr "%s: وصل نیست"

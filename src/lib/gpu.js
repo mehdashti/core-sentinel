@@ -39,8 +39,12 @@ function hex4(text) {
     return text?.trim().toLowerCase().replace(/^0x/, '').padStart(4, '0') ?? null;
 }
 
-/** @returns {Promise<object[]>} {card, slot, dir, name} per supported GPU */
-export async function listGpus() {
+/**
+ * @param {object[]} previous the last listing: names found there are reused, so
+ *   the 1–2 MB pci.ids is read only when a GPU not seen before turns up
+ * @returns {Promise<object[]>} {card, slot, dir, name} per supported GPU
+ */
+export async function listGpus(previous = []) {
     const cards = (await listDir('/sys/class/drm'))
         .filter(n => /^card\d+$/.test(n))
         .sort((a, b) => Number(a.slice(4)) - Number(b.slice(4)));
@@ -53,7 +57,10 @@ export async function listGpus() {
         const [vendor, device] = await Promise.all([readText(`${dir}/vendor`), readText(`${dir}/device`)]);
         gpus.push({card, slot: linkTargetName(dir) ?? card, dir, vendor: hex4(vendor), device: hex4(device)});
     }
-    if (gpus.length === 0)
+    const known = new Map(previous.map(gpu => [`${gpu.slot} ${gpu.vendor}:${gpu.device}`, gpu.name]));
+    for (const gpu of gpus)
+        gpu.name = known.get(`${gpu.slot} ${gpu.vendor}:${gpu.device}`);
+    if (gpus.every(gpu => gpu.name))
         return gpus;
 
     let ids = null;
@@ -62,7 +69,7 @@ export async function listGpus() {
         if (ids)
             break;
     }
-    for (const gpu of gpus) {
+    for (const gpu of gpus.filter(g => !g.name)) {
         const name = ids && gpu.vendor && gpu.device ? pciDeviceName(ids, gpu.vendor, gpu.device) : null;
         gpu.name = name ? shortGpuName(name) : `GPU ${gpu.slot}`;
     }

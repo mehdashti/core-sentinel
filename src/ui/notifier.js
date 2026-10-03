@@ -6,8 +6,14 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 
 export class Notifier {
-    constructor(title) {
+    /**
+     * @param {string} title the source's name in the message list
+     * @param {Gio.Icon} icon shipped with the extension: an icon theme may lack
+     *   any given stock icon
+     */
+    constructor(title, icon) {
         this._title = title;
+        this._icon = icon;
         this._source = null;
         this._byKey = new Map();
     }
@@ -16,7 +22,7 @@ export class Notifier {
         if (!this._source) {
             this._source = new MessageTray.Source({
                 title: this._title,
-                iconName: 'computer-symbolic',
+                icon: this._icon,
             });
             this._source.connect('destroy', () => {
                 this._source = null;
@@ -34,7 +40,8 @@ export class Notifier {
             source,
             title,
             body,
-            // hardware state is not private to the user: fine on the lock screen
+            // hardware state is not private to the user: shown in full on the
+            // lock screen, where Core Sentinel keeps watching (see extension.js)
             privacyScope: MessageTray.PrivacyScope.SYSTEM,
             ...params,
         });

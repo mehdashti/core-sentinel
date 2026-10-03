@@ -39,14 +39,21 @@ two better questions:
     that was spinning and stopped;
   - a fan slower than a minimum you set;
   - a sensor at its temperature limit (the hardware's own limit by default);
-  - a filesystem almost full; memory spilling into swap on disk; thrashing;
+  - a filesystem almost full (each filesystem can be left out, for one that is
+    meant to stay nearly full, such as a small EFI partition); memory spilling
+    into swap on disk; thrashing;
   - optionally, CPU saturation and I/O bottlenecks.
+- **Keeps watching while the screen is locked.** A fan that stops while you are
+  away still raises its alarm, shown on the lock screen, and an alert that is
+  still on is not announced again at every unlock. The top-bar button itself is
+  hidden on the lock screen.
 - **Unconnected fan headers are recognised.** A fan never seen spinning is shown
   as *not connected* and raises no alerts. Once seen spinning it is remembered,
   so a fan that dies before you log in is still caught.
 - **Per-sensor settings**: rename, hide, set a minimum RPM or a temperature limit,
   mark a fan as zero-RPM.
-- Translations: English, Persian.
+- Translations: English, Persian. Numbers follow your locale (Persian digits
+  in Persian, a decimal comma in German).
 
 ## Requirements
 
@@ -58,7 +65,14 @@ two better questions:
 
 ## Install
 
-From extensions.gnome.org (coming soon), or from source:
+From extensions.gnome.org (coming soon), from a
+[release](https://github.com/mehdashti/core-sentinel/releases):
+
+```sh
+gnome-extensions install --force core-sentinel@mehdashti.github.io.shell-extension.zip
+```
+
+or from source:
 
 ```sh
 git clone https://github.com/mehdashti/core-sentinel.git
@@ -77,11 +91,13 @@ Then log out and back in (Wayland) and enable *Core Sentinel* in the Extensions 
 | Memory used | `/proc/meminfo` | `MemTotal − MemAvailable`, the kernel's own estimate of what can be handed out without swapping. |
 | zram / swap | `/proc/swaps`, `/sys/block/zram*/mm_stat` | Swap on disk is where slowdowns begin; zram is compressed RAM. |
 | Disk I/O | `/proc/diskstats` | Whole disks only; busy is the share of time with I/O in flight. |
-| Sensors | `/sys/class/hwmon` | Keyed by driver and device (`it8689@it87.2624/fan1`), not by `hwmonN`, which can change between boots. |
+| Sensors | `/sys/class/hwmon` | Keyed by driver and device address (`it8689@it87.2624/fan1`, `nvme@0000:02:00.0/temp1`), never by a number handed out in probe order (`hwmonN`, `nvme0`, `phy0`, an i2c bus), which can change between boots. |
 | Temperature limits | `tempN_crit`, then `tempN_max` | Implausible values (0, 127, 255 °C) are ignored. A heat alert ends 5 °C below the limit. |
 | Fan stall | `fanN_input`, `pwmN` | 0 RPM while the duty cycle is at or above the stall threshold (20% by default) for the grace period (10 s). |
 
 Everything is read asynchronously from `/proc` and `/sys` every two seconds (configurable).
+A file that stops answering (a hung driver, a dying disk) reads as unavailable
+until it answers again; it never freezes the other readings.
 Core Sentinel uses no network and starts no helper processes.
 
 ## Development
@@ -91,8 +107,9 @@ make test         # unit tests (gjs)
 make lint         # ESLint
 make snapshot     # print what the data layer sees on this machine
 tools/shell-test.sh OUT_DIR [LOCALE]
-                  # run the extension in an isolated headless GNOME Shell and
-                  # screenshot the panel, menu, submenus and preferences
+                  # run the extension in an isolated headless GNOME Shell:
+                  # screenshots of the panel, menu, submenus, a notification and
+                  # each preferences page, and a lock/unlock check in report.json
 make install-dev  # symlink the working tree as the installed extension
 make pot          # refresh po/core-sentinel.pot and merge into the .po files
 make pack         # build dist/core-sentinel@mehdashti.github.io.shell-extension.zip
@@ -101,6 +118,11 @@ make pack         # build dist/core-sentinel@mehdashti.github.io.shell-extension
 `src/lib/` holds everything that does not need GNOME Shell: data readers, the
 alert rules, labels and formatting. It is shared by the shell (`extension.js`),
 the preferences window (`prefs.js`) and the tests. `src/ui/` is shell-only.
+
+### Releases
+
+Set `version-name` in `src/metadata.json`, then push a matching tag (`v0.2.0`).
+CI runs the checks and publishes the bundle as a GitHub release.
 
 ### Translations
 

@@ -42,7 +42,7 @@ pot:
 pack:
 	mkdir -p $(DIST)
 	gnome-extensions pack $(SRC) --force --out-dir=$(DIST) --podir=../po \
-		--extra-source=lib --extra-source=ui
+		--extra-source=lib --extra-source=ui --extra-source=icons
 
 install: pack
 	gnome-extensions install --force $(ZIP)

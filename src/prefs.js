@@ -7,14 +7,25 @@ import Gtk from 'gi://Gtk';
 
 import {ExtensionPreferences, gettext as _} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
-import {scanHwmon, readChip} from './lib/hwmon.js';
+import {scanHwmon, readChips} from './lib/hwmon.js';
 import {listGpus} from './lib/gpu.js';
+import {StorageSampler} from './lib/storage.js';
 import {parseOverrides, withOverride} from './lib/overrides.js';
 import {makeLabels} from './lib/labels.js';
-import {fmt, formatReading} from './lib/format.js';
+import {fmt, formatBytes, formatReading} from './lib/format.js';
+import {PANEL_ITEMS} from './lib/panel.js';
 
-/** Same ids and order as PANEL_ITEMS in ui/indicator.js (which prefs cannot import). */
-const PANEL_ITEMS = ['cpu', 'pressure', 'cpu-temp', 'memory', 'gpu', 'alert'];
+/** Shipped with the extension: an icon theme may lack any given stock icon. */
+const ICON = 'core-sentinel-symbolic';
+
+/**
+ * A subtitle that opens with a number or a Latin name ("91.3 GiB free...",
+ * "temp1 · 44°C") would be laid out left-to-right in an RTL locale and scramble
+ * its translated words; a leading RLM sets the base direction, as in the menu.
+ */
+function rtl(text) {
+    return Gtk.Widget.get_default_direction() === Gtk.TextDirection.RTL ? `\u200F${text}` : text;
+}
 
 function adjustment(lower, upper, step, value) {
     const adj = new Gtk.Adjustment({lower, upper, step_increment: step, page_increment: step * 10});
@@ -46,8 +57,11 @@ export default class CoreSentinelPreferences extends ExtensionPreferences {
         const settings = this.getSettings();
         window._settings = settings; // lives as long as the window
         window.set_default_size(640, 760);
+        const icons = Gtk.IconTheme.get_for_display(window.get_display());
+        if (!icons.get_search_path().includes(`${this.path}/icons`))
+            icons.add_search_path(`${this.path}/icons`);
         window.add(this._generalPage(settings));
-        window.add(this._alertsPage(settings));
+        window.add(await this._alertsPage(settings));
         window.add(await this._sensorsPage(settings));
     }
 
@@ -81,7 +95,7 @@ export default class CoreSentinelPreferences extends ExtensionPreferences {
         return page;
     }
 
-    _alertsPage(settings) {
+    async _alertsPage(settings) {
         const page = new Adw.PreferencesPage({title: _('Alerts'), icon_name: 'dialog-warning-symbolic'});
 
         const fans = group(page, _('Fans'),
@@ -100,6 +114,7 @@ export default class CoreSentinelPreferences extends ExtensionPreferences {
         disks.add(boundSwitchRow(settings, 'alert-disk', _('Alert when a filesystem is almost full')));
         disks.add(boundSpinRow(settings, 'disk-free-percent', _('Free space threshold'),
             _('Alert below this much free space (%)'), 1, 50));
+        await this._filesystemRows(page, settings);
 
         const memory = group(page, _('Memory'));
         memory.add(boundSwitchRow(settings, 'alert-swap', _('Alert when memory spills into swap on disk')));
@@ -120,13 +135,39 @@ export default class CoreSentinelPreferences extends ExtensionPreferences {
         return page;
     }
 
+    async _filesystemRows(page, settings) {
+        const g = group(page, _('Filesystems to watch'),
+            _('Switch off a filesystem that is meant to stay nearly full, such as a small EFI partition.'));
+        settings.bind('alert-disk', g, 'sensitive', Gio.SettingsBindFlags.GET);
+        const {filesystems} = await new StorageSampler().sample();
+        const mounted = new Map(filesystems.map(fs => [fs.mountpoint, fs]));
+        const ignored = new Set(settings.get_strv('disk-alert-ignore'));
+        for (const mountpoint of [...new Set([...mounted.keys(), ...ignored])].sort()) {
+            const fs = mounted.get(mountpoint);
+            const row = new Adw.SwitchRow({
+                title: mountpoint,
+                subtitle: fs ? rtl(fmt(_('%s free of %s'), formatBytes(fs.free), formatBytes(fs.size))) : _('not mounted'),
+                active: !ignored.has(mountpoint),
+            });
+            row.connect('notify::active', () => {
+                const next = new Set(settings.get_strv('disk-alert-ignore'));
+                if (row.active)
+                    next.delete(mountpoint);
+                else
+                    next.add(mountpoint);
+                settings.set_strv('disk-alert-ignore', [...next].sort());
+            });
+            g.add(row);
+        }
+    }
+
     async _sensorsPage(settings) {
-        const page = new Adw.PreferencesPage({title: _('Sensors'), icon_name: 'computer-symbolic'});
+        const page = new Adw.PreferencesPage({title: _('Sensors'), icon_name: ICON});
         group(page, '', _('Rename or hide each sensor and set its alert limits. Changes apply at once.'));
 
         const labels = makeLabels(_);
         const [chips, gpus] = await Promise.all([scanHwmon(), listGpus()]);
-        const reads = await Promise.all(chips.map(readChip));
+        const reads = await readChips(chips);
         const known = new Set(settings.get_strv('known-fans'));
         chips.forEach((chip, i) => {
             const g = group(page, labels.chipTitle(chip, gpus), chip.key);
@@ -146,7 +187,7 @@ export default class CoreSentinelPreferences extends ExtensionPreferences {
         const status = channel.kind === 'fan' && value === 0 && !known.has(channel.key)
             ? _('not connected (never seen spinning)')
             : formatReading(channel.kind, value);
-        const row = new Adw.ExpanderRow({title: o.label || channel.label, subtitle: `${channel.label} · ${status}`});
+        const row = new Adw.ExpanderRow({title: o.label || channel.label, subtitle: rtl(`${channel.label} · ${status}`)});
 
         const show = new Adw.SwitchRow({title: _('Show'), active: !o.hidden});
         show.connect('notify::active', () => set('hidden', !show.active));

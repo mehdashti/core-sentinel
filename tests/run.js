@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Unit tests for the pure parts of Core Sentinel:  gjs -m tests/run.js
 
+import GLib from 'gi://GLib';
 import System from 'system';
 
 import {parseCpuList, parseProcStat, busyPercent, groupCores, coreLoads} from '../src/lib/cpu.js';
@@ -8,11 +9,17 @@ import {parsePressure} from '../src/lib/pressure.js';
 import {parseMeminfo, parseSwaps, parseZramMmStat, summarize} from '../src/lib/memory.js';
 import {parseMounts, parseDiskstats, diskRates} from '../src/lib/storage.js';
 import {pciDeviceName, shortGpuName} from '../src/lib/gpu.js';
-import {categoryOf, findChannels, plausibleTempLimit, plausibleTemp} from '../src/lib/hwmon.js';
-import {AlertEngine, buildChecks} from '../src/lib/alerts.js';
+import {categoryOf, findChannels, plausibleTempLimit, plausibleTemp, stableDeviceId, stableChipName, uniqueKeys,
+    mapChips} from '../src/lib/hwmon.js';
+import {AlertEngine, SpinTracker, buildChecks} from '../src/lib/alerts.js';
 import {parseOverrides, withOverride} from '../src/lib/overrides.js';
-import {fmt, formatBytes, formatPercent, formatReading, meter, truncate} from '../src/lib/format.js';
+import {fmt, formatBytes, formatNumber, formatPercent, formatReading, meter, truncate, setNumberLocale}
+    from '../src/lib/format.js';
 import {makeLabels} from '../src/lib/labels.js';
+import {readText, pendingReads} from '../src/lib/io.js';
+
+// Numbers read the same on every machine; Persian has a test of its own.
+setNumberLocale('en-US');
 
 let passed = 0;
 let failed = 0;
@@ -191,6 +198,32 @@ test('findChannels: ordered, power average preferred over input', () => {
     eq(channels.map(c => c.input), ['temp1_input', 'temp2_input', 'fan1_input', 'power1_average', 'in0_input']);
 });
 
+test('stableDeviceId: probe-order numbers give way to bus addresses', () => {
+    const pci = '/sys/devices/pci0000:00';
+    const cases = {
+        [`${pci}/0000:00:01.2/0000:02:00.0/nvme/nvme0`]: '0000:02:00.0',
+        [`${pci}/0000:00:02.1/0000:0b:07.0/0000:0f:00.0/ieee80211/phy0`]: '0000:0f:00.0',
+        [`${pci}/0000:00:14.0/i2c-2/2-0051`]: '0000:00:14.0/0051',
+        [`${pci}/0000:00:14.0/i2c-12/12-0051`]: '0000:00:14.0/0051',
+        '/sys/devices/platform/AMDI0010:00/i2c-0/0-0050': 'AMDI0010:00/0050',
+        // already named by address: unchanged
+        [`${pci}/0000:00:01.1/0000:01:00.0`]: '0000:01:00.0',
+        '/sys/devices/platform/it87.2624': 'it87.2624',
+        '/sys/devices/virtual/thermal/thermal_zone0': 'thermal_zone0',
+        [`${pci}/0000:00:02.1/0000:0e:00.0/mdio_bus/r8169-0-e00/r8169-0-e00:00`]: 'r8169-0-e00:00',
+        '/sys/devices/platform/PNP0C14:00/wmi_bus/wmi_bus-PNP0C14:00/DEADBEEF-2001-0000-00A0-C90629100000-2':
+            'DEADBEEF-2001-0000-00A0-C90629100000-2',
+    };
+    for (const [path, id] of Object.entries(cases))
+        eq(stableDeviceId(path), id, `${path}:`);
+});
+
+test('stableChipName drops probe-order suffixes; uniqueKeys numbers repeats', () => {
+    eq(['mt7921_phy0', 'iwlwifi_1', 'r8169_0_e00:00', 'amdgpu', 'nct6798'].map(stableChipName),
+        ['mt7921', 'iwlwifi', 'r8169_0_e00:00', 'amdgpu', 'nct6798']);
+    eq(uniqueKeys(['a', 'b', 'a', 'a']), ['a', 'b', 'a#2', 'a#3']);
+});
+
 test('plausible temperatures and limits', () => {
     eq(plausibleTempLimit(127), null);
     eq(plausibleTempLimit(0), null);
@@ -242,6 +275,16 @@ test('a fan never seen spinning is not connected: no check, not reported as spin
 test('a spinning fan is reported so it can be remembered', () => {
     const {spinning} = checksFor(snapshot({fans: [{key: 'fan1', rpm: 900, pwm: 30}]}));
     eq(spinning, ['fan1']);
+});
+
+test('SpinTracker: a fan counts as connected only after spinning without a break', () => {
+    const tracker = new SpinTracker();
+    eq(tracker.update(['f'], 0, 10), []);
+    eq(tracker.update(['f'], 5, 10), []);
+    eq(tracker.update([], 6, 10), [], 'a moment of noise:');
+    eq(tracker.update(['f'], 8, 10), []);
+    eq(tracker.update(['f'], 17, 10), [], 'the clock restarted at 8:');
+    eq(tracker.update(['f'], 18, 10), ['f']);
 });
 
 test('known fan at 0 RPM while driven: stall raised only after the grace period, cleared when it spins', () => {
@@ -322,6 +365,15 @@ test('disk space: immediate, with a 2-point recovery margin', () => {
     eq(engine.update(at(12.5), 2).cleared.length, 1);
 });
 
+test('a filesystem meant to stay nearly full can be left out', () => {
+    const snap = snapshot({filesystems: [
+        {mountpoint: '/', free: GiB, freePercent: 5},
+        {mountpoint: '/boot/efi', free: MiB, freePercent: 3},
+    ]});
+    const settings = {...ALERT_SETTINGS, diskIgnore: new Set(['/boot/efi'])};
+    eq(checksFor(snap, {settings}).checks.map(c => c.key), ['disk:/']);
+});
+
 test('swap on disk and thrashing', () => {
     const engine = new AlertEngine();
     const swap = checksFor(snapshot({diskSwapUsed: 2 * GiB})).checks;
@@ -368,11 +420,25 @@ test('fmt, bytes, percent, readings, meter, truncate', () => {
     eq(formatPercent(12.345, 1), '12.3%');
     eq(formatReading('temp', 43.6), '44°C');
     eq(formatReading('fan', 958.4), '958 RPM');
+    eq(formatReading('fan', 1076), '1,076 RPM');
+    eq(formatNumber(2.46, 1), '2.5');
     eq(formatReading('in', 1.176), '1.18 V');
     eq(formatReading('power', 9.262), '9.3 W');
     eq(meter(30), '▰▰▰▱▱▱▱▱▱▱');
     eq(meter(150, 4), '▰▰▰▰');
     eq(truncate('abcdef', 4), 'abc…');
+});
+
+test('numbers follow the locale: Persian digits, decimal separator and percent sign', () => {
+    setNumberLocale('fa');
+    try {
+        eq(formatPercent(26), '۲۶٪');
+        eq(formatBytes(1536), '۱٫۵ KiB');
+        eq(fmt('%d cores', 12), '۱۲ cores');
+        eq(formatReading('temp', 43.6), '۴۴°C');
+    } finally {
+        setNumberLocale('en-US');
+    }
 });
 
 test('every alert type has a complete message', () => {
@@ -386,6 +452,62 @@ test('every alert type has a complete message', () => {
             throw new Error(`${type}: "${title}" / "${body}"`);
     }
 });
+
+// ----------------------------------------------------------------- io
+async function testAsync(name, fn) {
+    try {
+        await fn();
+        passed++;
+    } catch (e) {
+        failed++;
+        printerr(`FAIL ${name}\n     ${e.message}`);
+    }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, ms, () => {
+        resolve();
+        return GLib.SOURCE_REMOVE;
+    }));
+}
+
+async function ioTests() {
+    await testAsync('mapChips reads board chips one at a time, the others alongside', async () => {
+        const chips = ['it8689', 'gigabyte_wmi', 'acpitz', 'amdgpu', 'k10temp'].map(name => ({name}));
+        const active = {board: 0, other: 0};
+        const peak = {board: 0, other: 0};
+        const results = await mapChips(chips, async (chip, i) => {
+            const kind = categoryOf(chip.name) === 'board' ? 'board' : 'other';
+            peak[kind] = Math.max(peak[kind], ++active[kind]);
+            await sleep(20);
+            active[kind]--;
+            return i;
+        });
+        eq(results, [0, 1, 2, 3, 4]);
+        eq(peak, {board: 1, other: 2});
+    });
+
+    await testAsync('a read that never answers does not queue another one behind it', async () => {
+        // a FIFO with no writer blocks open() like a hung driver blocks read()
+        const dir = GLib.dir_make_tmp('core-sentinel-XXXXXX');
+        const fifo = `${dir}/fifo`;
+        GLib.spawn_command_line_sync(`mkfifo ${fifo}`);
+        try {
+            const stuck = readText(fifo);
+            eq(pendingReads(), [fifo]);
+            eq(await readText(fifo), null, 'second read while the first hangs:');
+            GLib.spawn_command_line_sync(`sh -c 'echo ok > ${fifo}'`);
+            eq(await stuck, 'ok\n', 'first read once answered:');
+            eq(pendingReads(), []);
+        } finally {
+            GLib.spawn_command_line_sync(`rm -r ${dir}`);
+        }
+    });
+}
+
+const loop = new GLib.MainLoop(null, false);
+ioTests().finally(() => loop.quit());
+loop.run();
 
 print(`${passed} passed, ${failed} failed`);
 if (failed > 0)
