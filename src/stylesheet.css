@@ -1,0 +1,51 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later */
+
+.cs-panel {
+    spacing: 6px;
+}
+
+.cs-panel-label {
+    font-feature-settings: "tnum";
+}
+
+.cs-dots {
+    spacing: 2px;
+}
+
+.cs-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 3px;
+}
+
+.cs-dot-ok { background-color: #57e389; }
+.cs-dot-warn { background-color: #f6d32d; }
+.cs-dot-crit { background-color: #ff7b63; }
+.cs-dot-off { background-color: rgba(255, 255, 255, 0.25); }
+
+.cs-alert-icon {
+    color: #ff7b63;
+}
+
+.popup-menu-item.cs-item {
+    padding-top: 3px;
+    padding-bottom: 3px;
+}
+
+.cs-row {
+    font-size: 0.92em;
+    font-feature-settings: "tnum";
+}
+
+.cs-mono {
+    font-family: monospace;
+}
+
+.cs-bad {
+    color: #ff7b63;
+    font-weight: bold;
+}
+
+.cs-dim {
+    color: rgba(255, 255, 255, 0.5);
+}

@@ -1,157 +1,135 @@
-// Real Cores — top-bar CPU meter over PHYSICAL cores (SMT sibling threads merged).
-// Stock monitors average the logical cpus; this reads the kernel's sibling map and
-// shows one value per physical core. A core's busy% = min(100, sum of its threads'
-// busy%) — exact when siblings don't overlap, a slight overcount when they do.
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Core Sentinel: honest CPU load over physical cores, resource pressure, and
+// hardware health (temperatures, fans, disks) with alerts.
+
 import GLib from 'gi://GLib';
-import St from 'gi://St';
-import Clutter from 'gi://Clutter';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
-import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 
-const TICK_SECONDS = 2;
+import {Monitor} from './lib/monitor.js';
+import {AlertEngine, buildChecks} from './lib/alerts.js';
+import {parseOverrides} from './lib/overrides.js';
+import {makeLabels} from './lib/labels.js';
+import {Indicator} from './ui/indicator.js';
+import {Notifier} from './ui/notifier.js';
 
-function readFile(path) {
-    try {
-        const [ok, bytes] = GLib.file_get_contents(path);
-        return ok ? new TextDecoder().decode(bytes) : null;
-    } catch {
-        return null;
-    }
+/** Alerts that stay on screen until dismissed: the hardware may be in danger. */
+const CRITICAL_TYPES = new Set(['fan-stall', 'fan-stopped', 'temp', 'thrash']);
+
+function readAlertSettings(settings) {
+    return {
+        alertFan: settings.get_boolean('alert-fan'),
+        fanStallPwm: settings.get_uint('fan-stall-pwm'),
+        fanStallSeconds: settings.get_uint('fan-stall-seconds'),
+        alertTemp: settings.get_boolean('alert-temp'),
+        alertDisk: settings.get_boolean('alert-disk'),
+        diskFreePercent: settings.get_uint('disk-free-percent'),
+        alertSwap: settings.get_boolean('alert-swap'),
+        swapAlertMiB: settings.get_uint('swap-alert-mib'),
+        alertThrash: settings.get_boolean('alert-thrash'),
+        thrashPercent: settings.get_uint('thrash-percent'),
+        cpuPressurePercent: settings.get_uint('cpu-pressure-percent'),
+        ioPressurePercent: settings.get_uint('io-pressure-percent'),
+    };
 }
 
-function topology() {
-    const n = GLib.get_num_processors();
-    const map = new Map();
-    for (let c = 0; c < n; c++) {
-        const core = readFile(`/sys/devices/system/cpu/cpu${c}/topology/core_id`);
-        const pkg = readFile(`/sys/devices/system/cpu/cpu${c}/topology/physical_package_id`);
-        if (core === null || pkg === null)
-            continue;
-        const key = `${pkg.trim()}:${core.trim()}`;
-        if (!map.has(key))
-            map.set(key, []);
-        map.get(key).push(c);
-    }
-    return [...map.values()]
-        .map(a => a.sort((x, y) => x - y))
-        .sort((a, b) => a[0] - b[0]);
-}
-
-function sample() {
-    const txt = readFile('/proc/stat');
-    const d = new Map();
-    if (!txt)
-        return d;
-    for (const line of txt.split('\n')) {
-        const m = line.match(/^cpu(\d+)\s+(.*)$/);
-        if (!m)
-            continue;
-        const f = m[2].trim().split(/\s+/).map(Number);
-        const total = f.slice(0, 8).reduce((a, b) => a + b, 0);
-        const idle = (f[3] || 0) + (f[4] || 0);
-        d.set(Number(m[1]), [total, idle]);
-    }
-    return d;
-}
-
-const BAR_FULL = '▰';
-const BAR_EMPTY = '▱';
-
-export default class RealCoresExtension extends Extension {
+export default class CoreSentinelExtension extends Extension {
     enable() {
-        this._cores = topology();
-        this._prev = sample();
+        this._settings = this.getSettings();
+        this._labels = makeLabels(_);
+        this._monitor = new Monitor();
+        this._alerts = new AlertEngine();
+        this._notifier = new Notifier(this.metadata.name);
+        this._indicator = new Indicator(this, this._labels);
+        this._indicator.setPanelItems(this._settings.get_strv('panel-items'));
+        Main.panel.addToStatusArea(this.uuid, this._indicator);
 
-        this._indicator = new PanelMenu.Button(0.0, 'Real Cores', false);
-        this._label = new St.Label({
-            text: '⬡ …%',
-            y_align: Clutter.ActorAlign.CENTER,
-            style_class: 'realcores-panel-label',
+        this._timerId = 0;
+        this._busy = false;
+        this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
+            if (key === 'update-interval')
+                this._restartTimer();
+            else if (key === 'panel-items')
+                this._indicator.setPanelItems(this._settings.get_strv('panel-items'));
         });
-        this._indicator.add_child(this._label);
 
-        this._header = new PopupMenu.PopupMenuItem(
-            `REAL cores: ${this._cores.length}`, {reactive: false});
-        this._header.label.set_style('font-family: monospace; font-weight: bold;');
-        this._indicator.menu.addMenuItem(this._header);
-        this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-
-        this._rows = [];
-        for (const sibs of this._cores) {
-            const item = new PopupMenu.PopupMenuItem('…', {reactive: false});
-            item.label.set_style('font-family: monospace;');
-            this._indicator.menu.addMenuItem(item);
-            this._rows.push(item);
-        }
-        this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-        this._footer = new PopupMenu.PopupMenuItem('…', {reactive: false});
-        this._footer.label.set_style('font-family: monospace;');
-        this._indicator.menu.addMenuItem(this._footer);
-
-        Main.panel.addToStatusArea('realcores', this._indicator);
-
-        this._timer = GLib.timeout_add_seconds(
-            GLib.PRIORITY_DEFAULT, TICK_SECONDS, () => {
-                this._tick();
-                return GLib.SOURCE_CONTINUE;
-            });
-        this._tick();
+        const monitor = this._monitor;
+        monitor.init().then(() => {
+            if (this._monitor !== monitor) // disabled while starting up
+                return;
+            this._restartTimer();
+            this._tick();
+        }).catch(e => logError(e, 'Core Sentinel: startup failed'));
     }
 
-    _tick() {
-        const cur = sample();
-        const busy = new Map();
-        for (const [k, [tot, idle]] of cur) {
-            const p = this._prev.get(k);
-            if (!p) {
-                busy.set(k, 0);
-                continue;
-            }
-            const dt = tot - p[0];
-            const di = idle - p[1];
-            busy.set(k, dt > 0 ? (100 * (dt - di)) / dt : 0);
-        }
-        this._prev = cur;
-
-        let sumReal = 0;
-        let sumLogical = 0;
-        let nLogical = 0;
-        for (const v of busy.values()) {
-            sumLogical += v;
-            nLogical += 1;
-        }
-        this._cores.forEach((sibs, i) => {
-            const v = Math.min(100, sibs.reduce((a, c) => a + (busy.get(c) || 0), 0));
-            sumReal += v;
-            const k = Math.round(v / 10);
-            const bar = BAR_FULL.repeat(k) + BAR_EMPTY.repeat(10 - k);
-            const cpus = sibs.join(',');
-            this._rows[i].label.set_text(
-                `core ${String(i).padStart(2)} [${cpus.padEnd(5)}] ${bar} ${v.toFixed(0).padStart(3)}%`);
+    _restartTimer() {
+        if (this._timerId)
+            GLib.source_remove(this._timerId);
+        const seconds = Math.max(1, this._settings.get_uint('update-interval'));
+        this._timerId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, seconds, () => {
+            this._tick();
+            return GLib.SOURCE_CONTINUE;
         });
-        const avgReal = this._cores.length ? sumReal / this._cores.length : 0;
-        const avgLogical = nLogical ? sumLogical / nLogical : 0;
-        this._label.set_text(`⬡ ${avgReal.toFixed(0)}%`);
-        this._footer.label.set_text(
-            `REAL avg ${avgReal.toFixed(1)}%   (logical ${avgLogical.toFixed(1)}%)`);
+    }
+
+    async _tick() {
+        if (this._busy) // the previous reading is still in flight
+            return;
+        this._busy = true;
+        const monitor = this._monitor;
+        try {
+            const snapshot = await monitor.sample();
+            if (this._monitor !== monitor)
+                return;
+            this._process(snapshot);
+        } catch (e) {
+            logError(e, 'Core Sentinel: reading failed');
+        } finally {
+            this._busy = false;
+        }
+    }
+
+    _process(snapshot) {
+        const overrides = parseOverrides(this._settings.get_string('sensor-overrides'));
+        const knownFans = new Set(this._settings.get_strv('known-fans'));
+        const {checks, spinning} = buildChecks(snapshot, {
+            overrides,
+            knownFans,
+            settings: readAlertSettings(this._settings),
+            labelOf: (chip, channel) => this._labels.channelLabel(chip, channel, overrides, snapshot.gpus),
+        });
+        if (spinning.length > 0) {
+            spinning.forEach(key => knownFans.add(key));
+            this._settings.set_strv('known-fans', [...knownFans]);
+        }
+
+        const {raised, cleared} = this._alerts.update(checks, snapshot.time);
+        for (const alert of raised)
+            this._notifier.raise(alert.key, this._labels.alertMessage(alert), CRITICAL_TYPES.has(alert.type));
+        for (const alert of cleared) {
+            if (this._settings.get_boolean('notify-recovery'))
+                this._notifier.recover(alert.key, this._labels.recoveryMessage(alert));
+            else
+                this._notifier.withdraw(alert.key);
+        }
+
+        this._indicator.update(snapshot, {overrides, knownFans, alerts: this._alerts.active});
     }
 
     disable() {
-        if (this._timer) {
-            GLib.source_remove(this._timer);
-            this._timer = null;
+        if (this._timerId) {
+            GLib.source_remove(this._timerId);
+            this._timerId = 0;
         }
-        if (this._indicator) {
-            this._indicator.destroy();
-            this._indicator = null;
-        }
-        this._label = null;
-        this._rows = [];
-        this._header = null;
-        this._footer = null;
-        this._prev = null;
+        this._settings.disconnect(this._settingsChangedId);
+        this._indicator.destroy();
+        this._notifier.destroy();
+        this._indicator = null;
+        this._notifier = null;
+        this._alerts = null;
+        this._monitor = null;
+        this._labels = null;
+        this._settings = null;
     }
 }

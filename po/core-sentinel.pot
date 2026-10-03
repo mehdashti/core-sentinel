@@ -1,0 +1,486 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Core Sentinel package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: Core Sentinel\n"
+"Report-Msgid-Bugs-To: https://github.com/mehdashti/core-sentinel/issues\n"
+"POT-Creation-Date: 2026-10-03 12:10+0300\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/prefs.js:55
+msgid "General"
+msgstr ""
+
+#: src/prefs.js:57
+msgid "Readings"
+msgstr ""
+
+#: src/prefs.js:58
+msgid "Update interval"
+msgstr ""
+
+#: src/prefs.js:58
+msgid "Seconds between readings"
+msgstr ""
+
+#: src/prefs.js:60
+msgid "Top bar"
+msgstr ""
+
+#: src/prefs.js:60
+msgid "What the top bar shows. The menu always shows everything."
+msgstr ""
+
+#: src/prefs.js:62
+msgid "CPU load over physical cores"
+msgstr ""
+
+#: src/prefs.js:63
+msgid "Pressure dots for CPU, memory and I/O"
+msgstr ""
+
+#: src/prefs.js:64
+msgid "CPU temperature"
+msgstr ""
+
+#: src/prefs.js:65
+msgid "Memory use"
+msgstr ""
+
+#: src/prefs.js:66
+msgid "GPU load"
+msgstr ""
+
+#: src/prefs.js:67
+msgid "Warning icon while an alert is active"
+msgstr ""
+
+#: src/prefs.js:85
+msgid "Alerts"
+msgstr ""
+
+#: src/prefs.js:87 src/ui/indicator.js:143
+msgid "Fans"
+msgstr ""
+
+#: src/prefs.js:88
+msgid ""
+"A fan that has never been seen spinning is treated as not connected and "
+"raises no alerts."
+msgstr ""
+
+#: src/prefs.js:89
+msgid "Alert when a fan stalls or stops"
+msgstr ""
+
+#: src/prefs.js:90
+msgid "Stall threshold"
+msgstr ""
+
+#: src/prefs.js:91
+msgid "PWM duty (%) above which a fan reporting 0 RPM counts as stalled"
+msgstr ""
+
+#: src/prefs.js:92
+msgid "Grace period"
+msgstr ""
+
+#: src/prefs.js:93
+msgid "Seconds a fan problem must last before an alert"
+msgstr ""
+
+#: src/prefs.js:95 src/ui/indicator.js:143
+msgid "Temperatures"
+msgstr ""
+
+#: src/prefs.js:96
+msgid ""
+"Each sensor uses the limit its hardware reports. Set your own on the Sensors "
+"page."
+msgstr ""
+
+#: src/prefs.js:97
+msgid "Alert when a sensor reaches its limit"
+msgstr ""
+
+#: src/prefs.js:99 src/lib/labels.js:17 src/ui/indicator.js:141
+msgid "Storage"
+msgstr ""
+
+#: src/prefs.js:100
+msgid "Alert when a filesystem is almost full"
+msgstr ""
+
+#: src/prefs.js:101
+msgid "Free space threshold"
+msgstr ""
+
+#: src/prefs.js:102
+msgid "Alert below this much free space (%)"
+msgstr ""
+
+#: src/prefs.js:104 src/lib/labels.js:16 src/ui/indicator.js:140
+msgid "Memory"
+msgstr ""
+
+#: src/prefs.js:105
+msgid "Alert when memory spills into swap on disk"
+msgstr ""
+
+#: src/prefs.js:106
+msgid "Swap threshold"
+msgstr ""
+
+#: src/prefs.js:107
+msgid "Swap on disk (MiB) that triggers the alert"
+msgstr ""
+
+#: src/prefs.js:108
+msgid "Alert when the system thrashes"
+msgstr ""
+
+#: src/prefs.js:109
+msgid "Thrashing threshold"
+msgstr ""
+
+#: src/prefs.js:110
+msgid "Share of time (%) all tasks were stalled on memory, 10 s average"
+msgstr ""
+
+#: src/prefs.js:112
+msgid "Pressure"
+msgstr ""
+
+#: src/prefs.js:112
+msgid "0 turns an alert off."
+msgstr ""
+
+#: src/prefs.js:113
+msgid "CPU saturation"
+msgstr ""
+
+#: src/prefs.js:114
+msgid "Share of time (%) tasks waited for a CPU, 1 min average"
+msgstr ""
+
+#: src/prefs.js:115
+msgid "I/O bottleneck"
+msgstr ""
+
+#: src/prefs.js:116
+msgid "Share of time (%) all tasks were stalled on I/O, 10 s average"
+msgstr ""
+
+#: src/prefs.js:118
+msgid "Notifications"
+msgstr ""
+
+#: src/prefs.js:119
+msgid "Notify when a problem is over"
+msgstr ""
+
+#: src/prefs.js:124 src/ui/indicator.js:143
+msgid "Sensors"
+msgstr ""
+
+#: src/prefs.js:125
+msgid ""
+"Rename or hide each sensor and set its alert limits. Changes apply at once."
+msgstr ""
+
+#: src/prefs.js:147
+msgid "not connected (never seen spinning)"
+msgstr ""
+
+#: src/prefs.js:151
+msgid "Show"
+msgstr ""
+
+#: src/prefs.js:155
+msgid "Display name"
+msgstr ""
+
+#: src/prefs.js:165
+msgid "Minimum RPM"
+msgstr ""
+
+#: src/prefs.js:166
+msgid "Alert when it turns slower than this; 0 turns it off"
+msgstr ""
+
+#: src/prefs.js:173
+msgid "Stops on its own"
+msgstr ""
+
+#: src/prefs.js:174
+msgid "A zero-RPM fan (some GPU and PSU fans): stopping is not an alarm"
+msgstr ""
+
+#: src/prefs.js:182
+msgid "Forget this fan"
+msgstr ""
+
+#: src/prefs.js:183
+msgid "Treat it as not connected until it is seen spinning again"
+msgstr ""
+
+#: src/prefs.js:185
+msgid "Forget"
+msgstr ""
+
+#: src/prefs.js:195
+msgid "Alert at (°C)"
+msgstr ""
+
+#: src/prefs.js:197
+#, javascript-format
+msgid "0 uses the hardware limit, %s"
+msgstr ""
+
+#: src/prefs.js:198
+msgid "0 means no alert: the hardware reports no limit"
+msgstr ""
+
+#: src/lib/labels.js:14 src/ui/indicator.js:139
+msgid "Processor"
+msgstr ""
+
+#: src/lib/labels.js:15
+msgid "Motherboard"
+msgstr ""
+
+#: src/lib/labels.js:18 src/ui/indicator.js:142
+msgid "Graphics"
+msgstr ""
+
+#: src/lib/labels.js:19
+msgid "Network"
+msgstr ""
+
+#: src/lib/labels.js:20
+msgid "Other"
+msgstr ""
+
+#: src/lib/labels.js:26
+msgid "CPU"
+msgstr ""
+
+#: src/lib/labels.js:28
+msgid "ACPI thermal zone"
+msgstr ""
+
+#: src/lib/labels.js:28
+#, javascript-format
+msgid "Board (%s)"
+msgstr ""
+
+#: src/lib/labels.js:30
+#, javascript-format
+msgid "RAM module %s"
+msgstr ""
+
+#: src/lib/labels.js:32
+#, javascript-format
+msgid "Disk %s"
+msgstr ""
+
+#: src/lib/labels.js:35
+msgid "GPU"
+msgstr ""
+
+#: src/lib/labels.js:38
+#, javascript-format
+msgid "Network (%s)"
+msgstr ""
+
+#: src/lib/labels.js:53
+#, javascript-format
+msgid "Fan stalled: %s"
+msgstr ""
+
+#: src/lib/labels.js:54
+#, javascript-format
+msgid "Driven at %s but reporting 0 RPM. Check the fan and its cable."
+msgstr ""
+
+#: src/lib/labels.js:59
+#, javascript-format
+msgid "Fan stopped: %s"
+msgstr ""
+
+#: src/lib/labels.js:60
+msgid "It was spinning before and now reports 0 RPM."
+msgstr ""
+
+#: src/lib/labels.js:64
+#, javascript-format
+msgid "Fan too slow: %s"
+msgstr ""
+
+#: src/lib/labels.js:65
+#, javascript-format
+msgid "%s, below the %s minimum you set."
+msgstr ""
+
+#: src/lib/labels.js:70
+#, javascript-format
+msgid "Too hot: %s"
+msgstr ""
+
+#: src/lib/labels.js:71
+#, javascript-format
+msgid "%s, at or above the %s limit."
+msgstr ""
+
+#: src/lib/labels.js:76
+#, javascript-format
+msgid "Disk almost full: %s"
+msgstr ""
+
+#: src/lib/labels.js:77
+#, javascript-format
+msgid "Only %s free (%s)."
+msgstr ""
+
+#: src/lib/labels.js:81
+msgid "Memory is running out"
+msgstr ""
+
+#: src/lib/labels.js:82
+#, javascript-format
+msgid "%s has been moved to swap on disk; expect slowdowns."
+msgstr ""
+
+#: src/lib/labels.js:86
+msgid "The system is thrashing"
+msgstr ""
+
+#: src/lib/labels.js:87
+#, javascript-format
+msgid "All tasks were stalled on memory %s of the last 10 seconds."
+msgstr ""
+
+#: src/lib/labels.js:92
+msgid "The CPU is saturated"
+msgstr ""
+
+#: src/lib/labels.js:93
+#, javascript-format
+msgid "Tasks waited for a CPU %s of the last minute."
+msgstr ""
+
+#: src/lib/labels.js:97
+msgid "Disk I/O is the bottleneck"
+msgstr ""
+
+#: src/lib/labels.js:98
+#, javascript-format
+msgid "All tasks were stalled on I/O %s of the last 10 seconds."
+msgstr ""
+
+#: src/lib/labels.js:107
+#, javascript-format
+msgid "Back to normal: %s"
+msgstr ""
+
+#: src/ui/indicator.js:139
+msgid "Per-core load"
+msgstr ""
+
+#: src/ui/indicator.js:143
+msgid "Voltages and power"
+msgstr ""
+
+#: src/ui/indicator.js:146
+msgid "Settings"
+msgstr ""
+
+#: src/ui/indicator.js:203
+#, javascript-format
+msgid "%s on physical cores, %s on logical threads"
+msgstr ""
+
+#: src/ui/indicator.js:206
+#, javascript-format
+msgid "%d cores, %d threads"
+msgstr ""
+
+#: src/ui/indicator.js:211
+#, javascript-format
+msgid "Tasks waiting for a CPU: %s (10 s), %s (1 min)"
+msgstr ""
+
+#: src/ui/indicator.js:218
+#, javascript-format
+msgid "Core %d"
+msgstr ""
+
+#: src/ui/indicator.js:228
+#, javascript-format
+msgid "Used %s of %s (%s), %s available"
+msgstr ""
+
+#: src/ui/indicator.js:235
+#, javascript-format
+msgid "zram: %s stored in %s of RAM (%s:1)"
+msgstr ""
+
+#: src/ui/indicator.js:237
+#, javascript-format
+msgid "zram: %s of %s used"
+msgstr ""
+
+#: src/ui/indicator.js:242
+#, javascript-format
+msgid "Swap on disk: %s of %s"
+msgstr ""
+
+#: src/ui/indicator.js:251
+#, javascript-format
+msgid "Stalled on memory: %s some, %s all tasks (10 s)"
+msgstr ""
+
+#: src/ui/indicator.js:263
+#, javascript-format
+msgid "%s: %s free of %s (%s used)"
+msgstr ""
+
+#: src/ui/indicator.js:270
+#, javascript-format
+msgid "%s: read %s, write %s, busy %s"
+msgstr ""
+
+#: src/ui/indicator.js:277
+#, javascript-format
+msgid "Stalled on I/O: %s some, %s all tasks (10 s)"
+msgstr ""
+
+#: src/ui/indicator.js:290
+#, javascript-format
+msgid "%s: asleep"
+msgstr ""
+
+#: src/ui/indicator.js:294
+#, javascript-format
+msgid "%s: busy %s, VRAM %s of %s"
+msgstr ""
+
+#: src/ui/indicator.js:327
+#, javascript-format
+msgid "limit %s"
+msgstr ""
+
+#: src/ui/indicator.js:334
+#, javascript-format
+msgid "%s: not connected"
+msgstr ""

@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<schemalist gettext-domain="core-sentinel">
+  <schema id="org.gnome.shell.extensions.core-sentinel" path="/org/gnome/shell/extensions/core-sentinel/">
+
+    <key name="update-interval" type="u">
+      <default>2</default>
+      <range min="1" max="30"/>
+      <summary>Seconds between readings</summary>
+    </key>
+    <key name="panel-items" type="as">
+      <default>['cpu', 'pressure', 'cpu-temp', 'alert']</default>
+      <summary>Items shown in the top bar</summary>
+      <description>Any of: cpu, pressure, cpu-temp, memory, gpu, alert.</description>
+    </key>
+    <key name="sensor-overrides" type="s">
+      <default>'{}'</default>
+      <summary>Per-sensor settings</summary>
+      <description>JSON object keyed by sensor: hidden, label, minRpm, zeroRpm, maxTemp.</description>
+    </key>
+    <key name="known-fans" type="as">
+      <default>[]</default>
+      <summary>Fans that have been seen spinning</summary>
+      <description>A fan never seen spinning is treated as not connected and raises no alerts.</description>
+    </key>
+
+    <key name="alert-fan" type="b">
+      <default>true</default>
+      <summary>Alert when a fan stalls or stops</summary>
+    </key>
+    <key name="fan-stall-pwm" type="u">
+      <default>20</default>
+      <range min="1" max="100"/>
+      <summary>PWM duty (%) above which a fan at 0 RPM counts as stalled</summary>
+    </key>
+    <key name="fan-stall-seconds" type="u">
+      <default>10</default>
+      <range min="3" max="300"/>
+      <summary>Seconds a fan problem must last before alerting</summary>
+    </key>
+    <key name="alert-temp" type="b">
+      <default>true</default>
+      <summary>Alert when a sensor reaches its temperature limit</summary>
+    </key>
+    <key name="alert-disk" type="b">
+      <default>true</default>
+      <summary>Alert when a filesystem is almost full</summary>
+    </key>
+    <key name="disk-free-percent" type="u">
+      <default>10</default>
+      <range min="1" max="50"/>
+      <summary>Free space (%) below which a filesystem counts as almost full</summary>
+    </key>
+    <key name="alert-swap" type="b">
+      <default>true</default>
+      <summary>Alert when memory spills into swap on disk</summary>
+    </key>
+    <key name="swap-alert-mib" type="u">
+      <default>1024</default>
+      <range min="64" max="1048576"/>
+      <summary>Swap on disk (MiB) that triggers the alert</summary>
+    </key>
+    <key name="alert-thrash" type="b">
+      <default>true</default>
+      <summary>Alert when the system thrashes</summary>
+    </key>
+    <key name="thrash-percent" type="u">
+      <default>10</default>
+      <range min="1" max="100"/>
+      <summary>Memory "full" pressure (%, 10 s average) that counts as thrashing</summary>
+    </key>
+    <key name="cpu-pressure-percent" type="u">
+      <default>0</default>
+      <range min="0" max="100"/>
+      <summary>CPU "some" pressure (%, 1 min average) that triggers an alert; 0 turns it off</summary>
+    </key>
+    <key name="io-pressure-percent" type="u">
+      <default>0</default>
+      <range min="0" max="100"/>
+      <summary>I/O "full" pressure (%, 10 s average) that triggers an alert; 0 turns it off</summary>
+    </key>
+    <key name="notify-recovery" type="b">
+      <default>true</default>
+      <summary>Notify when an alert condition is over</summary>
+    </key>
+  </schema>
+</schemalist>

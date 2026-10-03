@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install GJS and GNOME tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gjs gettext libglib2.0-bin gnome-shell-common gnome-shell zip
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install lint tools
+        run: npm ci
+
+      - name: Lint
+        run: make lint
+
+      - name: Unit tests
+        run: make test
+
+      - name: Schemas and translations
+        run: make schemas translations
+
+      - name: Build the extension bundle
+        run: make pack
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: core-sentinel
+          path: dist/*.shell-extension.zip
