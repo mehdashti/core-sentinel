@@ -1,0 +1,4 @@
+node_modules/
+dist/
+src/schemas/gschemas.compiled
+src/locale/

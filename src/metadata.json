@@ -1,0 +1,7 @@
+{
+  "uuid": "core-sentinel@mehdashti.github.io",
+  "name": "Core Sentinel",
+  "description": "CPU load over physical cores (SMT sibling threads merged), in the top bar; click for per-core detail.",
+  "shell-version": ["48", "49", "50"],
+  "url": "https://github.com/mehdashti/core-sentinel"
+}
