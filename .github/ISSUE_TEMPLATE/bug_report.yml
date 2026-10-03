@@ -1,0 +1,44 @@
+name: Bug report
+description: Something Core Sentinel shows or does is wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead. A screenshot of the menu helps.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Core Sentinel version
+      description: "From the Extensions app, or: `gnome-extensions info core-sentinel@mehdashti.github.io`"
+    validations:
+      required: true
+  - type: input
+    id: system
+    attributes:
+      label: GNOME Shell version and distribution
+      placeholder: GNOME Shell 49.2, Fedora 43
+    validations:
+      required: true
+  - type: textarea
+    id: snapshot
+    attributes:
+      label: What Core Sentinel sees on your machine
+      description: |
+        Sensors, fans, disks and GPUs differ from machine to machine. For anything about them, run this and paste the output. It only reads `/proc` and `/sys` and changes nothing.
+
+        ```sh
+        git clone --depth 1 https://github.com/mehdashti/core-sentinel.git
+        cd core-sentinel
+        gjs -m tools/snapshot.js
+        ```
+      render: text
+  - type: textarea
+    id: log
+    attributes:
+      label: Errors in the log
+      description: "Output of: `journalctl --user -b -o cat | grep -i 'core sentinel'`"
+      render: text

@@ -1,0 +1,16 @@
+name: Feature request
+description: Something Core Sentinel could show or watch
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you want to know or be warned about
+      description: The question you want answered, or the situation you want caught, rather than a particular solution.
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware involved
+      description: If it is about a sensor or device, which one, and the output of `gjs -m tools/snapshot.js` (see the bug report form).

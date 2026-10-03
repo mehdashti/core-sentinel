@@ -38,3 +38,31 @@ jobs:
         with:
           name: core-sentinel
           path: dist/*.shell-extension.zip
+
+  # A tag vX.Y.Z publishes the bundle the check job built as a GitHub release.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: check
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The tag matches version-name in metadata.json
+        run: |
+          version="$(jq -r '."version-name"' src/metadata.json)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "tag $GITHUB_REF_NAME does not match version-name $version" >&2
+            exit 1
+          fi
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: core-sentinel
+          path: dist
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/*.shell-extension.zip --title "Core Sentinel $GITHUB_REF_NAME" --generate-notes
