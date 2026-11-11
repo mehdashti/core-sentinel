@@ -19,7 +19,7 @@ SECONDS_TO_RUN="${CS_TEST_SECONDS:-120}"
 mkdir -p "$OUT"
 OUT="$(cd "$OUT" && pwd)"
 # what the harness writes, so nothing from an earlier run is taken for this one's
-rm -f "$OUT/report.json" "$OUT"/{panel,menu,menu-sub*,notification,prefs,prefs-*}.png
+rm -f "$OUT/report.json" "$OUT"/{panel,menu*,notification,prefs*}.png
 
 make -C "$ROOT" --quiet schemas translations
 
