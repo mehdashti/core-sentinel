@@ -90,11 +90,22 @@ export default class HarnessExtension extends Extension {
         indicator.menu.open(false);
         await sleep(3); // one more tick renders the open menu
         await shot('menu');
-        const subs = [...indicator._cpu.subs, ...indicator._memory.subs, ...indicator._sensors.subs];
-        for (const [i, sub] of subs.entries()) {
-            sub.item.setSubmenuShown(true);
-            await sleep(1.5);
-            await shot(`menu-sub${i}`);
+        // Every group opened in turn. An open group should show its rows, not a
+        // sliver: shown is the visible height of its rows, content their full height.
+        result.menuHeight = Math.round(indicator.menu.actor.height);
+        result.groups = {};
+        const groups = {
+            cpu: indicator._cpu, memory: indicator._memory, storage: indicator._storage, gpu: indicator._gpu,
+            temps: indicator._sensors[0], fans: indicator._sensors[1], others: indicator._sensors[2],
+        };
+        for (const [name, group] of Object.entries(groups)) {
+            if (!group.item.visible)
+                continue;
+            group.item.setSubmenuShown(true);
+            await sleep(2.5); // process lists: a first reading, then shares a second later
+            await shot(`menu-${name}`);
+            const scroll = group.item.menu.actor.vadjustment;
+            result.groups[name] = {shown: Math.round(scroll.page_size), content: Math.round(scroll.upper)};
         }
         indicator.menu.close(false);
 

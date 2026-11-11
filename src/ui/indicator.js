@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // The top-bar button and its menu. The panel part is redrawn every tick; the
 // menu only while it is open (and once when it opens), so a closed menu costs
-// nothing. The process lists are read only while the menu is open, on a timer
-// of their own.
+// nothing. The menu is one row per group (Processor, Memory, ...) whose title
+// sums it up; a group's details open below its row, so an open group has the
+// height of the screen to itself. The process lists are read only while the
+// Processor or Memory group is open, on a timer of their own.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -84,6 +86,15 @@ function processRow(proc, value) {
     return {text: `${processName(proc)} (${formatId(proc.pid)}): ${value}`};
 }
 
+/** A group's row: its summary, in the alert color while one of its alerts is on. */
+function setGroupTitle(group, text, bad) {
+    group.item.label.text = text;
+    if (bad)
+        group.item.label.add_style_class_name('cs-bad');
+    else
+        group.item.label.remove_style_class_name('cs-bad');
+}
+
 function pressureLevel(record) {
     const value = record?.some?.avg10;
     if (value === undefined)
@@ -145,8 +156,17 @@ class Indicator extends PanelMenu.Button {
             }
             if (this._last)
                 this._renderMenu();
-            this._startProcesses();
         });
+        // a menu opens one group at a time; switching groups closes the other
+        const withProcesses = [this._cpu, this._memory];
+        for (const group of withProcesses) {
+            group.item.menu.connect('open-state-changed', (_menu, open) => {
+                if (open)
+                    this._startProcesses();
+                else if (!withProcesses.some(g => g.item.menu.isOpen))
+                    this._stopProcesses();
+            });
+        }
     }
 
     _onDestroy() {
@@ -171,30 +191,33 @@ class Indicator extends PanelMenu.Button {
 
     _buildMenu() {
         const menu = this.menu;
-        const section = () => {
+        const section = parent => {
             const s = new PopupMenu.PopupMenuSection();
-            menu.addMenuItem(s);
+            parent.addMenuItem(s);
             return s;
         };
-        const block = (title, ...subTitles) => {
-            const heading = new PopupMenu.PopupSeparatorMenuItem(title);
-            menu.addMenuItem(heading);
-            const rows = new RowList(section());
-            const subs = subTitles.map(subTitle => {
-                const item = new PopupMenu.PopupSubMenuMenuItem(subTitle);
-                menu.addMenuItem(item);
-                return {item, title: subTitle, rows: new RowList(item.menu)};
+        // A group: one row whose title sums it up (set by its render method),
+        // opening onto its detail rows and, under small headings, its lists.
+        const group = (title, listTitles = []) => {
+            const item = new PopupMenu.PopupSubMenuMenuItem(title);
+            menu.addMenuItem(item);
+            const rows = new RowList(section(item.menu));
+            const lists = listTitles.map(listTitle => {
+                item.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem(listTitle));
+                return new RowList(section(item.menu));
             });
-            return {heading, rows, subs};
+            return {item, title, rows, lists};
         };
 
-        this._alertRows = new RowList(section());
+        this._alertRows = new RowList(section(menu));
         this._history = this._buildHistory();
-        this._cpu = block(_('Processor'), _('Per-core load'), _('Top processes'));
-        this._memory = block(_('Memory'), _('Top processes'));
-        this._storage = block(_('Storage'));
-        this._gpu = block(_('Graphics'));
-        this._sensors = block(_('Sensors'), _('Temperatures'), _('Fans'), _('Voltages and power'));
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._cpu = group(_('Processor'), [_('Top processes'), _('Per-core load')]);
+        this._memory = group(_('Memory'), [_('Top processes')]);
+        this._storage = group(_('Storage'));
+        this._gpu = group(_('Graphics'));
+        menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        this._sensors = [group(_('Temperatures')), group(_('Fans')), group(_('Voltages and power'))];
 
         menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
         const settings = new PopupMenu.PopupMenuItem(_('Settings'));
@@ -302,7 +325,10 @@ class Indicator extends PanelMenu.Button {
             });
         }
         this._cpu.rows.set(rows);
-        this._cpu.subs[0].rows.set((s.cpu?.perCore ?? []).map((core, i) => ({
+        setGroupTitle(this._cpu, s.cpu
+            ? fmt(_('Processor: %s on physical cores'), formatPercent(s.cpu.real, 1)) : this._cpu.title,
+        active.has('cpu-pressure'));
+        this._cpu.lists[1].set((s.cpu?.perCore ?? []).map((core, i) => ({
             text: `${fmt(_('Core %d'), i).padEnd(8)} ${meter(core.percent)} ${formatPercent(core.percent).padStart(4)}  ${core.cpus.map(cpu => formatNumber(cpu)).join('+')}`,
             mono: true,
         })));
@@ -342,6 +368,9 @@ class Indicator extends PanelMenu.Button {
             });
         }
         this._memory.rows.set(rows);
+        setGroupTitle(this._memory, mem
+            ? fmt(_('Memory: %s of %s used'), formatBytes(mem.used), formatBytes(mem.total)) : this._memory.title,
+        active.has('swap') || active.has('thrash'));
     }
 
     _renderStorage(s, active) {
@@ -368,6 +397,14 @@ class Indicator extends PanelMenu.Button {
             });
         }
         this._storage.rows.set(rows);
+        // the title names one filesystem: one with an alert on, else the root
+        const filesystems = s.storage?.filesystems ?? [];
+        const shown = filesystems.find(fs => active.has(`disk:${fs.mountpoint}`)) ??
+            filesystems.find(fs => fs.mountpoint === '/') ?? filesystems[0];
+        setGroupTitle(this._storage, shown
+            ? fmt(_('Storage: %s free on %s'), formatBytes(shown.free), isolate(shown.mountpoint))
+            : this._storage.title,
+        rows.some(row => row.bad));
     }
 
     _renderGpus(s, state) {
@@ -395,7 +432,10 @@ class Indicator extends PanelMenu.Button {
                 rows.push({text: `    ${parts.join(' · ')}`});
         }
         this._gpu.rows.set(rows);
-        this._gpu.heading.visible = rows.length > 0;
+        this._gpu.item.visible = rows.length > 0;
+        const busy = s.gpus.filter(g => !g.asleep && g.busy !== null).map(g => g.busy);
+        setGroupTitle(this._gpu, busy.length
+            ? fmt(_('Graphics: busy %s'), formatPercent(Math.max(...busy))) : _('Graphics: asleep'), false);
     }
 
     _startProcesses() {
@@ -435,23 +475,16 @@ class Indicator extends PanelMenu.Button {
     /** @param {object|null} result ProcessSampler.sample(); null until the first arrives */
     _renderProcesses(result) {
         const measuring = {text: _('Measuring…'), dim: true};
-        const cpu = this._cpu.subs[1];
         let cpuRows = [measuring];
         if (result?.cpu?.length === 0)
             cpuRows = [{text: _('No process is busy'), dim: true}];
         else if (result?.cpu)
             cpuRows = result.cpu.map(p => processRow(p, formatPercent(p.share, 1)));
-        cpu.rows.set([...cpuRows, {text: _('Shares of the load on physical cores'), dim: true}]);
-        const busiest = result?.cpu?.[0];
-        cpu.item.label.text = busiest
-            ? `${cpu.title}: ${processName(busiest)} ${formatPercent(busiest.share, 1)}` : cpu.title;
+        this._cpu.lists[0].set([...cpuRows, {text: _('Shares of the load on physical cores'), dim: true}]);
 
-        const memory = this._memory.subs[0];
         const memoryRows = result ? result.memory.map(p => processRow(p, formatBytes(p.memory))) : [measuring];
-        memory.rows.set([...memoryRows, {text: _('Private memory in RAM; shared memory is not counted'), dim: true}]);
-        const largest = result?.memory[0];
-        memory.item.label.text = largest
-            ? `${memory.title}: ${processName(largest)} ${formatBytes(largest.memory)}` : memory.title;
+        this._memory.lists[0].set([...memoryRows,
+            {text: _('Private memory in RAM; shared memory is not counted'), dim: true}]);
     }
 
     _renderSensors(s, state, active) {
@@ -490,10 +523,10 @@ class Indicator extends PanelMenu.Button {
             }
         }
         [temps, fans, others].forEach((rows, i) => {
-            const sub = this._sensors.subs[i];
-            sub.rows.set(rows);
-            sub.item.label.text = `${sub.title} (${formatNumber(rows.length)})`;
-            sub.item.visible = rows.length > 0;
+            const group = this._sensors[i];
+            group.rows.set(rows);
+            setGroupTitle(group, `${group.title} (${formatNumber(rows.length)})`, rows.some(row => row.bad));
+            group.item.visible = rows.length > 0;
         });
     }
 });

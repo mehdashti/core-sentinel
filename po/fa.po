@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Core Sentinel\n"
 "Report-Msgid-Bugs-To: https://github.com/mehdashti/core-sentinel/issues\n"
-"POT-Creation-Date: 2026-11-11 09:50+0300\n"
+"POT-Creation-Date: 2026-11-11 09:58+0300\n"
 "PO-Revision-Date: 2026-10-03 12:10+0300\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -68,7 +68,7 @@ msgstr "نماد هشدار تا وقتی هشداری فعال است"
 msgid "Alerts"
 msgstr "هشدارها"
 
-#: src/prefs.js:101 src/ui/indicator.js:197
+#: src/prefs.js:101 src/ui/indicator.js:220
 msgid "Fans"
 msgstr "فن‌ها"
 
@@ -98,7 +98,7 @@ msgstr "مهلت"
 msgid "Seconds a fan problem must last before an alert"
 msgstr "چند ثانیه مشکل فن باید ادامه پیدا کند تا هشدار داده شود"
 
-#: src/prefs.js:109 src/ui/indicator.js:197
+#: src/prefs.js:109 src/ui/indicator.js:220
 msgid "Temperatures"
 msgstr "دماها"
 
@@ -114,7 +114,7 @@ msgstr ""
 msgid "Alert when a sensor reaches its limit"
 msgstr "هشدار وقتی سنسوری به حدش برسد"
 
-#: src/prefs.js:113 src/lib/labels.js:17 src/ui/indicator.js:195
+#: src/prefs.js:113 src/lib/labels.js:17 src/ui/indicator.js:217
 msgid "Storage"
 msgstr "ذخیره‌سازی"
 
@@ -130,7 +130,7 @@ msgstr "آستانهٔ فضای آزاد"
 msgid "Alert below this much free space (%)"
 msgstr "هشدار وقتی فضای آزاد کمتر از این درصد شود"
 
-#: src/prefs.js:119 src/lib/labels.js:16 src/ui/indicator.js:194
+#: src/prefs.js:119 src/lib/labels.js:16 src/ui/indicator.js:216
 msgid "Memory"
 msgstr "حافظه"
 
@@ -210,7 +210,7 @@ msgstr "%s آزاد از %s"
 msgid "not mounted"
 msgstr "متصل نیست"
 
-#: src/prefs.js:165 src/ui/indicator.js:197
+#: src/prefs.js:165
 msgid "Sensors"
 msgstr "سنسورها"
 
@@ -274,7 +274,7 @@ msgstr "مقدار ۰ یعنی حد سخت‌افزار، %s"
 msgid "0 means no alert: the hardware reports no limit"
 msgstr "مقدار ۰ یعنی بدون هشدار: سخت‌افزار حدی گزارش نمی‌کند"
 
-#: src/lib/labels.js:14 src/ui/indicator.js:193
+#: src/lib/labels.js:14 src/ui/indicator.js:215
 msgid "Processor"
 msgstr "پردازنده"
 
@@ -282,7 +282,7 @@ msgstr "پردازنده"
 msgid "Motherboard"
 msgstr "مادربرد"
 
-#: src/lib/labels.js:18 src/ui/indicator.js:196
+#: src/lib/labels.js:18 src/ui/indicator.js:218
 msgid "Graphics"
 msgstr "گرافیک"
 
@@ -449,122 +449,146 @@ msgstr "%s، در %s"
 msgid "%s, %s to %s"
 msgstr "%s، %s تا %s"
 
-#: src/ui/indicator.js:193
-msgid "Per-core load"
-msgstr "بار هر هسته"
-
-#: src/ui/indicator.js:193 src/ui/indicator.js:194
+#: src/ui/indicator.js:215 src/ui/indicator.js:216
 msgid "Top processes"
 msgstr "پرمصرف‌ترین فرایندها"
 
-#: src/ui/indicator.js:197
+#: src/ui/indicator.js:215
+msgid "Per-core load"
+msgstr "بار هر هسته"
+
+#: src/ui/indicator.js:220
 msgid "Voltages and power"
 msgstr "ولتاژها و توان"
 
-#: src/ui/indicator.js:200
+#: src/ui/indicator.js:223
 msgid "Settings"
 msgstr "تنظیمات"
 
-#: src/ui/indicator.js:207
+#: src/ui/indicator.js:230
 msgid "Recent alerts"
 msgstr "هشدارهای اخیر"
 
-#: src/ui/indicator.js:212
+#: src/ui/indicator.js:235
 msgid "Clear"
 msgstr "پاک کردن"
 
-#: src/ui/indicator.js:291
+#: src/ui/indicator.js:314
 #, javascript-format
 msgid "%s on physical cores, %s on logical threads"
 msgstr "%s روی هسته‌های فیزیکی، %s روی رشته‌های منطقی"
 
-#: src/ui/indicator.js:294
+#: src/ui/indicator.js:317
 #, javascript-format
 msgid "%d cores, %d threads"
 msgstr "%d هسته، %d رشته"
 
-#: src/ui/indicator.js:299
+#: src/ui/indicator.js:322
 #, javascript-format
 msgid "Tasks waiting for a CPU: %s (10 s), %s (1 min)"
 msgstr "کارهای منتظر CPU: %s (۱۰ ثانیه)، %s (۱ دقیقه)"
 
-#: src/ui/indicator.js:306
+#: src/ui/indicator.js:329
+#, javascript-format
+msgid "Processor: %s on physical cores"
+msgstr "پردازنده: %s روی هسته‌های فیزیکی"
+
+#: src/ui/indicator.js:332
 #, javascript-format
 msgid "Core %d"
 msgstr "هسته %d"
 
-#: src/ui/indicator.js:316
+#: src/ui/indicator.js:342
 #, javascript-format
 msgid "Used %s of %s (%s), %s available"
 msgstr "مصرف %s از %s (%s)، %s در دسترس"
 
-#: src/ui/indicator.js:323
+#: src/ui/indicator.js:349
 #, javascript-format
 msgid "zram: %s stored in %s of RAM (%s:1)"
 msgstr "حافظهٔ zram: %s داده در %s از رم (%s:۱)"
 
-#: src/ui/indicator.js:325
+#: src/ui/indicator.js:351
 #, javascript-format
 msgid "zram: %s of %s used"
 msgstr "حافظهٔ zram: %s از %s استفاده شده"
 
-#: src/ui/indicator.js:330
+#: src/ui/indicator.js:356
 #, javascript-format
 msgid "Swap on disk: %s of %s"
 msgstr "فضای swap روی دیسک: %s از %s"
 
-#: src/ui/indicator.js:339
+#: src/ui/indicator.js:365
 #, javascript-format
 msgid "Stalled on memory: %s some, %s all tasks (10 s)"
 msgstr "منتظر حافظه: %s بعضی، %s همهٔ کارها (۱۰ ثانیه)"
 
-#: src/ui/indicator.js:351
+#: src/ui/indicator.js:372
+#, javascript-format
+msgid "Memory: %s of %s used"
+msgstr "حافظه: مصرف %s از %s"
+
+#: src/ui/indicator.js:380
 #, javascript-format
 msgid "%s: %s free of %s (%s used)"
 msgstr "%s: %s آزاد از %s (%s مصرف‌شده)"
 
-#: src/ui/indicator.js:358
+#: src/ui/indicator.js:387
 #, javascript-format
 msgid "%s: read %s, write %s, busy %s"
 msgstr "%s: خواندن %s، نوشتن %s، مشغول %s"
 
-#: src/ui/indicator.js:365
+#: src/ui/indicator.js:394
 #, javascript-format
 msgid "Stalled on I/O: %s some, %s all tasks (10 s)"
 msgstr "منتظر ورودی/خروجی: %s بعضی، %s همهٔ کارها (۱۰ ثانیه)"
 
-#: src/ui/indicator.js:378
+#: src/ui/indicator.js:405
+#, javascript-format
+msgid "Storage: %s free on %s"
+msgstr "ذخیره‌سازی: %s آزاد روی %s"
+
+#: src/ui/indicator.js:415
 #, javascript-format
 msgid "%s: asleep"
 msgstr "%s: در خواب"
 
-#: src/ui/indicator.js:382
+#: src/ui/indicator.js:419
 #, javascript-format
 msgid "%s: busy %s, VRAM %s of %s"
 msgstr "%s: مشغول %s، VRAM %s از %s"
 
-#: src/ui/indicator.js:437
+#: src/ui/indicator.js:438
+#, javascript-format
+msgid "Graphics: busy %s"
+msgstr "گرافیک: مشغول %s"
+
+#: src/ui/indicator.js:438
+msgid "Graphics: asleep"
+msgstr "گرافیک: در خواب"
+
+#: src/ui/indicator.js:477
 msgid "Measuring…"
 msgstr "در حال اندازه‌گیری…"
 
-#: src/ui/indicator.js:441
+#: src/ui/indicator.js:480
 msgid "No process is busy"
 msgstr "هیچ فرایندی مشغول نیست"
 
-#: src/ui/indicator.js:444
+#: src/ui/indicator.js:483
 msgid "Shares of the load on physical cores"
 msgstr "سهم هر فرایند از بار هسته‌های فیزیکی"
 
-#: src/ui/indicator.js:451
+#: src/ui/indicator.js:487
 msgid "Private memory in RAM; shared memory is not counted"
 msgstr "حافظهٔ اختصاصی در رم؛ حافظهٔ مشترک حساب نمی‌شود"
 
-#: src/ui/indicator.js:472
+#: src/ui/indicator.js:505
 #, javascript-format
 msgid "limit %s"
 msgstr "حد %s"
 
-#: src/ui/indicator.js:479
+#: src/ui/indicator.js:512
 #, javascript-format
 msgid "%s: not connected"
 msgstr "%s: وصل نیست"

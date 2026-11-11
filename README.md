@@ -20,6 +20,10 @@ two better questions:
 
 ## Features
 
+The menu has one row per group (processor, memory, storage, graphics,
+temperatures, fans, voltages), whose title sums it up and turns red while one
+of its alerts is on; a click opens the group's details below it.
+
 - **Physical-core CPU load.** SMT sibling threads are merged using the kernel's
   topology, so twelve busy cores on a 24-thread CPU read 100%, not 50%. The
   logical average and a per-core breakdown are in the menu.
@@ -27,10 +31,10 @@ two better questions:
   and as numbers in the menu.
 - **Memory** used without reclaimable page cache; zram (with its compression
   ratio) and swap on disk shown apart.
-- **The processes behind the load.** While the menu is open, the five busiest
-  processes by CPU and the five with the most private memory, each with its
-  process ID. The first of each list is named in its submenu's title, so when
-  the pressure dots say CPU or memory is the bottleneck, the menu says who.
+- **The processes behind the load.** The Processor group lists the five
+  busiest processes by CPU and the Memory group the five with the most private
+  memory, each with its process ID, so when the pressure dots say CPU or memory
+  is the bottleneck, the menu says who.
 - **Storage**: free space per filesystem, read/write throughput and busy time
   per disk.
 - **GPU** (AMD, via `amdgpu`): load, VRAM, temperature, fan and board power. A
@@ -111,10 +115,10 @@ Then log out and back in (Wayland) and enable *Core Sentinel* in the Extensions 
 Everything is read asynchronously from `/proc` and `/sys` every two seconds (configurable).
 A file that stops answering (a hung driver, a dying disk) reads as unavailable
 until it answers again; it never freezes the other readings.
-The process lists are read only while the menu is open, every two seconds,
-one file per process and at most four at a time; on a Ryzen 9 7900X one
-reading of about 900 processes costs the shell about 35 ms of CPU time, in
-small pieces between frames.
+The process lists are read only while the Processor or Memory group is open,
+every two seconds, one file per process and at most four at a time; on a
+Ryzen 9 7900X one reading of about 900 processes costs the shell about 35 ms
+of CPU time, in small pieces between frames.
 Per-process disk I/O is not shown: the kernel shows it to a user only for
 their own processes, and I/O bottlenecks are often caused by system services
 that such a list would leave out.
@@ -129,8 +133,9 @@ make snapshot     # print what the data layer sees on this machine, and how
                   # long one reading and one process list take
 tools/shell-test.sh OUT_DIR [LOCALE]
                   # run the extension in an isolated headless GNOME Shell:
-                  # screenshots of the panel, menu, submenus, a notification and
-                  # each preferences page, and a lock/unlock check in report.json
+                  # screenshots of the panel, the menu with each group open, a
+                  # notification and each preferences page; report.json checks
+                  # lock/unlock, alerts and how much of each open group shows
                   # (it runs the GNOME Shell installed on this machine)
 make install-dev  # symlink the working tree as the installed extension
 make pot          # refresh po/core-sentinel.pot and merge into the .po files
