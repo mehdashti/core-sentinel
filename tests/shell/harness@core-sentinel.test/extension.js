@@ -71,6 +71,14 @@ export default class HarnessExtension extends Extension {
     }
 
     async _run() {
+        // Until its startup animation is over the shell covers the screen with
+        // an invisible actor, and the clicks on the preferences window below
+        // would land on it. Hiding the overview, where the shell starts, while
+        // that animation still waits for its first frame stalls it for good
+        // (seen with software rendering, as in CI).
+        for (let i = 0; i < 30 && Main.layoutManager._startingUp; i++)
+            await sleep(1);
+        const result = {startupComplete: !Main.layoutManager._startingUp};
         Main.overview.hide();
         await sleep(8);
         const indicator = Main.panel.statusArea[UUID];
@@ -79,7 +87,6 @@ export default class HarnessExtension extends Extension {
             report({error: 'indicator missing', state: ext?.state, extError: `${ext?.error}`});
             return;
         }
-        const result = {};
 
         await shot('panel');
         const state = ext.stateObj;

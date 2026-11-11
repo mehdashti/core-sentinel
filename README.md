@@ -135,8 +135,9 @@ tools/shell-test.sh OUT_DIR [LOCALE]
                   # run the extension in an isolated headless GNOME Shell:
                   # screenshots of the panel, the menu with each group open, a
                   # notification and each preferences page; report.json checks
-                  # lock/unlock, alerts and how much of each open group shows
-                  # (it runs the GNOME Shell installed on this machine)
+                  # lock/unlock, alerts and how much of each open group shows;
+                  # prints PASS, or what failed and exits 1 (needs jq; it runs
+                  # the GNOME Shell installed on this machine)
 make install-dev  # symlink the working tree as the installed extension
 make pot          # refresh po/core-sentinel.pot and merge into the .po files
 make pack         # build dist/core-sentinel@mehdashti.github.io.shell-extension.zip
@@ -145,6 +146,24 @@ make pack         # build dist/core-sentinel@mehdashti.github.io.shell-extension
 `src/lib/` holds everything that does not need GNOME Shell: data readers, the
 alert rules, labels and formatting. It is shared by the shell (`extension.js`),
 the preferences window (`prefs.js`) and the tests. `src/ui/` is shell-only.
+
+### Continuous integration
+
+Every push runs the lint, the unit tests and the bundle build, and
+`tools/shell-test.sh` (in English and in Persian) in a container with the
+GNOME Shell of the newest stable Fedora. Every Monday, and when started by hand
+(Actions, CI, Run workflow), the shell test runs on Fedora rawhide too: the
+GNOME Shell to come. Each run keeps its screenshots and `shell.log` as an
+artifact. When rawhide reaches a GNOME major that `shell-version` in
+`src/metadata.json` does not list, that run fails and says so: the time to add
+it, before users upgrade.
+
+The container test on your machine, as CI runs it (Docker):
+
+```sh
+docker run --rm -v "$PWD:/src" -w /src quay.io/fedora/fedora:rawhide bash -c \
+    'tests/shell/container.sh && runuser -u tester -- env XDG_SESSION_ID=c1 tools/shell-test.sh out'
+```
 
 ### Releases
 

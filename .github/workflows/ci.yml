@@ -3,19 +3,27 @@ name: CI
 on:
   push:
   pull_request:
+  # Mondays: also Fedora rawhide, to meet the next GNOME Shell before users do
+  schedule:
+    - cron: '23 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   check:
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install GJS and GNOME tooling
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends gjs gettext libglib2.0-bin gnome-shell-common gnome-shell zip
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -34,20 +42,57 @@ jobs:
       - name: Build the extension bundle
         run: make pack
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: core-sentinel
           path: dist/*.shell-extension.zip
 
+  # The extension in a headless GNOME Shell (tools/shell-test.sh): the newest
+  # stable Fedora on every push; on the weekly run and on demand, rawhide too.
+  # When rawhide reaches a GNOME major that shell-version does not list, this
+  # fails saying so: add it (CLAUDE.md, "A new GNOME major version").
+  shell:
+    name: GNOME Shell (Fedora ${{ matrix.fedora }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        fedora: ${{ fromJSON((github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '["latest", "rawhide"]' || '["latest"]') }}
+    container: quay.io/fedora/fedora:${{ matrix.fedora }}
+    env:
+      # the most a run may take; it ends as soon as the harness reports (~1 min)
+      CS_TEST_SECONDS: 120
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install GNOME Shell, with logind and GDM mocked
+        run: |
+          tests/shell/container.sh
+          echo "$(gnome-shell --version) on $(. /etc/os-release && echo "$PRETTY_NAME")" | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Shell test, English
+        run: runuser -u tester -- env XDG_SESSION_ID=c1 tools/shell-test.sh out/en
+
+      - name: Shell test, Persian
+        if: ${{ !cancelled() }}
+        run: runuser -u tester -- env XDG_SESSION_ID=c1 tools/shell-test.sh out/fa fa_IR.UTF-8
+
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: shell-test-fedora-${{ matrix.fedora }}
+          path: out/
+
   # A tag vX.Y.Z publishes the bundle the check job built as a GitHub release.
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: check
+    needs: [check, shell]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: The tag matches version-name in metadata.json
         run: |
@@ -57,7 +102,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: core-sentinel
           path: dist
