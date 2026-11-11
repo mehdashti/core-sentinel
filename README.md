@@ -80,7 +80,7 @@ of its alerts is on; a click opens the group's details below it.
 
 ## Install
 
-From extensions.gnome.org (coming soon), from a
+From extensions.gnome.org (in review), from a
 [release](https://github.com/mehdashti/core-sentinel/releases):
 
 ```sh
@@ -167,8 +167,9 @@ docker run --rm -v "$PWD:/src" -w /src quay.io/fedora/fedora:rawhide bash -c \
 
 ### Releases
 
-Set `version-name` in `src/metadata.json`, then push a matching tag (`v0.2.0`).
-CI runs the checks and publishes the bundle as a GitHub release.
+Add the version to [CHANGELOG.md](CHANGELOG.md), set `version-name` in
+`src/metadata.json`, then push a matching tag (`v0.2.0`). CI runs the checks
+and publishes the bundle as a GitHub release.
 
 ### Translations
 

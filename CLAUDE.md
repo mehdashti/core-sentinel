@@ -8,10 +8,17 @@ gettext domain `core-sentinel`.
 ## Layout
 
 - `src/lib/`: no GNOME Shell imports (only `gi://GLib`/`gi://Gio`). Data readers,
-  `alerts.js` (pure rules), `labels.js` (gettext injected), `format.js`. Shared by
-  the shell, `prefs.js` and `tests/run.js`. Keep it that way: prefs and tests
-  cannot import `resource:///org/gnome/shell/...`.
-- `src/ui/`: shell-only (panel button, menu, notifications).
+  `alerts.js` (pure rules; `AlertEngine.update()` returns raised, cleared and
+  dropped), `history.js` (Recent alerts), `processes.js` (top processes),
+  `labels.js` (gettext injected), `format.js`. Shared by the shell, `prefs.js`
+  and `tests/run.js`. Keep it that way: prefs and tests cannot import
+  `resource:///org/gnome/shell/...`.
+- `src/ui/`: shell-only (panel button, menu, notifications). The menu is one
+  row per group (`group()` in `ui/indicator.js`): the row's title sums the
+  group up and turns red while one of its alerts is on, and its details open
+  below it. Keep the closed menu short, so an open group has the screen to
+  itself: `report.json` has `menuHeight` and, per group, `shown` against
+  `content`.
 - `tools/snapshot.js`: data layer against the real machine. `tools/shell-test.sh`:
   isolated headless GNOME Shell + `tests/shell/harness@core-sentinel.test`,
   which screenshots the panel, the menu with each group open, Recent alerts, a
@@ -47,6 +54,13 @@ gettext domain `core-sentinel`.
 - RTL: menu rows and composed prefs subtitles get a leading RLM in RTL locales
   (`RowList` in `ui/indicator.js`, `rtl()` in `prefs.js`); paths go through
   `isolate()`.
+- Text from another process (a process name) is untrusted: plain label text,
+  never markup, control and bidi characters replaced, isolated.
+- A settings change applies at once (`_process()` on the last reading), and an
+  alert whose subject stops being watched is dropped: its notification is
+  withdrawn, without a "recovered" message.
+- Work goes straight to `main`, in a linear history: no merge commits, no pull
+  requests. A side branch comes in by fast-forward or cherry-pick.
 
 ## Before calling a change done
 
@@ -81,10 +95,31 @@ GNOME 51: `Clutter.get_default_backend()` is gone (use
 the top-left corner, which opened the overview until `shell-test.sh` turned
 hot corners off.
 
-## Before uploading to extensions.gnome.org
+## Releasing
 
-`make pack`, then run EGO's static analyzer on the bundle (`uv` is installed;
+1. Add the version to `CHANGELOG.md`, set `version-name` in
+   `src/metadata.json` (its `description` is the text on extensions.gnome.org:
+   name new features there), `make lint test`, the shell test.
+2. Commit "Core Sentinel X.Y.Z: <what changed>", an annotated tag `vX.Y.Z`,
+   push `main` and the tag. CI checks the tag against `version-name` and
+   publishes the bundle as a GitHub release; then write its notes
+   (`gh release edit vX.Y.Z --notes ...`, from the CHANGELOG entry).
+3. `make pack` for the bundle to upload. If it hangs, the desktop's gvfs
+   metadata daemon is stuck: `GIO_USE_VFS=local make pack` does not need it.
+
+## Uploading to extensions.gnome.org
+
+Run EGO's static analyzer on the bundle first (`uv` is installed;
 `python3 -m venv` fails on Debian without `python3-venv`):
 `uvx shexli dist/core-sentinel@mehdashti.github.io.shell-extension.zip`.
 Shexli 0.2.1 reports every `shell-version` above 50 as an implausible future
-release (EGO-M-004); that is out of date, EGO itself lists GNOME 51.
+release (EGO-M-004); that is out of date, EGO itself lists GNOME 51, and the
+site's own Shexli passes 0.2.0.
+
+The owner uploads at extensions.gnome.org/upload (account `mehdashti`): a
+browser driven by Claude cannot attach a file from disk, and the two consent
+boxes are the owner's. Uploading a version auto-rejects the previous one still
+waiting for review ("Auto-rejected because of new version ... was uploaded");
+that is normal. On the new version's review page, leave a note for the
+reviewers on what needs justifying: the unlock-dialog session mode, and the
+reading of other processes' `/proc/[pid]` files (see the note on 0.2.0).
