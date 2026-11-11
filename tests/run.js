@@ -345,7 +345,7 @@ test('temperature: a user limit overrides the hardware one; no limit means no ch
     eq(custom.find(c => c.key === 'temp:cpu').bad, true);
 });
 
-test('hidden sensors are not checked, and their alert ends without a recovery event', () => {
+test('hidden sensors are not checked, and their alert is dropped without a recovery event', () => {
     const engine = new AlertEngine();
     const snap = snapshot({temps: [{key: 'hot', value: 99, limit: 80}]});
     engine.update(checksFor(snap).checks, 0);
@@ -353,8 +353,20 @@ test('hidden sensors are not checked, and their alert ends without a recovery ev
     eq(engine.active.length, 1);
     const hidden = checksFor(snap, {overrides: {hot: {hidden: true}}}).checks;
     eq(hidden.length, 0);
-    eq(engine.update(hidden, 20), {raised: [], cleared: []});
+    const {raised, cleared, dropped} = engine.update(hidden, 20);
+    eq([raised.length, cleared.length], [0, 0]);
+    eq(dropped.map(a => a.key), ['temp:hot'], 'its notification must be taken back:');
     eq(engine.active.length, 0);
+});
+
+test('switching a rule off drops its active alert; switching it on again raises it anew', () => {
+    const engine = new AlertEngine();
+    const snap = snapshot({filesystems: [{mountpoint: '/', free: GiB, freePercent: 3}]});
+    eq(engine.update(checksFor(snap).checks, 0).raised.length, 1);
+    const off = checksFor(snap, {settings: {...ALERT_SETTINGS, alertDisk: false}}).checks;
+    eq(engine.update(off, 1).dropped.map(a => a.key), ['disk:/']);
+    eq(engine.update(off, 2).dropped.length, 0, 'dropped once:');
+    eq(engine.update(checksFor(snap).checks, 3).raised.length, 1);
 });
 
 test('disk space: immediate, with a 2-point recovery margin', () => {

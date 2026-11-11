@@ -29,7 +29,8 @@ gettext domain `core-sentinel`.
 - `disable()` must undo everything `enable()` did (EGO review requirement).
 - Session modes `user` and `unlock-dialog`: monitoring and notifications go on
   while locked, the panel button is hidden (`_syncLocked`). EGO requires the
-  comment above `disable()` that explains why.
+  comment above `disable()` that explains why; its last `//` line must name
+  the session mode, since Shexli reads only the line right above `disable()`.
 - User-visible numbers go through `lib/format.js` (locale digits), never
   `toFixed()` or a template literal.
 - Every user-visible string goes through `_()`. After changing strings: `make pot`,
@@ -63,3 +64,11 @@ GNOME 51: `Clutter.get_default_backend()` is gone (use
 `global.stage.context.get_backend()`), and a new virtual pointer first lands in
 the top-left corner, which opened the overview until `shell-test.sh` turned
 hot corners off.
+
+## Before uploading to extensions.gnome.org
+
+`make pack`, then run EGO's static analyzer on the bundle (`uv` is installed;
+`python3 -m venv` fails on Debian without `python3-venv`):
+`uvx shexli dist/core-sentinel@mehdashti.github.io.shell-extension.zip`.
+Shexli 0.2.1 reports every `shell-version` above 50 as an implausible future
+release (EGO-M-004); that is out of date, EGO itself lists GNOME 51.

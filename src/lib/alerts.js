@@ -205,11 +205,13 @@ export class AlertEngine {
     /**
      * @param {Check[]} checks this tick's checks
      * @param {number} now seconds on a monotonic clock
-     * @returns {{raised: object[], cleared: object[]}}
+     * @returns {{raised: object[], cleared: object[], dropped: object[]}} dropped:
+     *   active alerts whose subject is no longer watched (see below)
      */
     update(checks, now) {
         const raised = [];
         const cleared = [];
+        const dropped = [];
         const seen = new Set();
         for (const check of checks) {
             seen.add(check.key);
@@ -238,13 +240,18 @@ export class AlertEngine {
             }
         }
         // A subject that is gone (sensor hidden, disk unmounted, rule switched
-        // off) ends quietly: no "recovered" message for something not watched.
-        for (const map of [this._active, this._pendingSince]) {
-            for (const key of [...map.keys()]) {
-                if (!seen.has(key))
-                    map.delete(key);
+        // off) ends quietly: no "recovered" message for something not watched,
+        // but its alarm is taken back (dropped), not left on screen.
+        for (const [key, alert] of [...this._active]) {
+            if (!seen.has(key)) {
+                this._active.delete(key);
+                dropped.push(alert);
             }
         }
-        return {raised, cleared};
+        for (const key of [...this._pendingSince.keys()]) {
+            if (!seen.has(key))
+                this._pendingSince.delete(key);
+        }
+        return {raised, cleared, dropped};
     }
 }

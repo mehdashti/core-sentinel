@@ -63,11 +63,15 @@ export default class CoreSentinelExtension extends Extension {
         this._timerId = 0;
         this._tickId = 0;
         this._busySince = 0;
+        this._lastSnapshot = null;
         this._settingsChangedId = this._settings.connect('changed', (_settings, key) => {
             if (key === 'update-interval')
                 this._restartTimer();
             else if (key === 'panel-items')
                 this._indicator.setPanelItems(this._settings.get_strv('panel-items'));
+            else if (key !== 'known-fans' && this._lastSnapshot) // _process writes known-fans
+                // an alert switch, a limit or a hidden sensor applies at once, not at the next reading
+                this._process(this._lastSnapshot);
         });
 
         const monitor = this._monitor;
@@ -122,6 +126,7 @@ export default class CoreSentinelExtension extends Extension {
     }
 
     _process(snapshot) {
+        this._lastSnapshot = snapshot;
         const overrides = parseOverrides(this._settings.get_string('sensor-overrides'));
         const knownFans = new Set(this._settings.get_strv('known-fans'));
         const {checks, spinning} = buildChecks(snapshot, {
@@ -136,7 +141,7 @@ export default class CoreSentinelExtension extends Extension {
             this._settings.set_strv('known-fans', [...knownFans]);
         }
 
-        const {raised, cleared} = this._alerts.update(checks, snapshot.time);
+        const {raised, cleared, dropped} = this._alerts.update(checks, snapshot.time);
         for (const alert of raised)
             this._notifier.raise(alert.key, this._labels.alertMessage(alert), CRITICAL_TYPES.has(alert.type));
         for (const alert of cleared) {
@@ -145,15 +150,18 @@ export default class CoreSentinelExtension extends Extension {
             else
                 this._notifier.withdraw(alert.key);
         }
+        // switched off, hidden or left out: take the alarm back, without a "recovered" message
+        for (const alert of dropped)
+            this._notifier.withdraw(alert.key);
 
         this._indicator.update(snapshot, {overrides, knownFans, alerts: this._alerts.active});
     }
 
-    // Core Sentinel stays enabled on the lock screen (session mode
-    // unlock-dialog): a fan that stops or a part that overheats while the user
-    // is away must still raise its alarm, shown on the lock screen, and an
-    // alert that is still on must not be announced again at every unlock. The
-    // top-bar button is hidden while the screen is locked (_syncLocked).
+    // Core Sentinel stays enabled on the lock screen: a fan that stops or a
+    // part that overheats while the user is away must still raise its alarm,
+    // shown on the lock screen, and an alert that is still on must not be
+    // announced again at every unlock. The top-bar button is hidden while the
+    // screen is locked (_syncLocked). Hence the unlock-dialog session mode.
     disable() {
         if (this._timerId) {
             GLib.source_remove(this._timerId);
@@ -169,6 +177,7 @@ export default class CoreSentinelExtension extends Extension {
         this._spin = null;
         this._monitor = null;
         this._labels = null;
+        this._lastSnapshot = null;
         this._settings = null;
     }
 }

@@ -80,6 +80,26 @@ export default class HarnessExtension extends Extension {
         await shot('notification');
         ext.stateObj._notifier.withdraw('harness');
 
+        // A setting applies at once, not at the next reading, and switching the
+        // alert rules off takes back the alarms already shown. The highest disk
+        // threshold (50% free) raises a disk alert on most machines; the report
+        // is meaningful when activeBefore > 0.
+        const state = ext.stateObj;
+        const rules = ['alert-fan', 'alert-temp', 'alert-disk', 'alert-swap', 'alert-thrash'];
+        const settle = 0.5; // less than a reading interval
+        state._settings.set_uint('disk-free-percent', 50);
+        await sleep(settle);
+        result.switchOff = {
+            activeBefore: state._alerts.active.length,
+            notificationsBefore: state._notifier._byKey.size,
+        };
+        rules.forEach(key => state._settings.set_boolean(key, false));
+        await sleep(settle);
+        result.switchOff.activeAfter = state._alerts.active.length;
+        result.switchOff.notificationsAfter = state._notifier._byKey.size;
+        [...rules, 'disk-free-percent'].forEach(key => state._settings.reset(key));
+        await sleep(3);
+
         // Locking must neither disable the extension nor leave the button on the lock screen.
         Main.screenShield.lock(false);
         await sleep(4);
