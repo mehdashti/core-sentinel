@@ -28,6 +28,8 @@ export ROOT SECONDS_TO_RUN
 dbus-run-session -- bash -c '
     gsettings set org.gnome.shell enabled-extensions "[\"core-sentinel@mehdashti.github.io\", \"harness@core-sentinel.test\"]"
     gsettings set org.gnome.shell welcome-dialog-last-shown-version "999"
+    # a new virtual pointer first lands at the top edge; on 51 that trips the hot corner
+    gsettings set org.gnome.desktop.interface enable-hot-corners false
     GSETTINGS_SCHEMA_DIR="$ROOT/src/schemas" gsettings set org.gnome.shell.extensions.core-sentinel \
         panel-items "[\"cpu\", \"pressure\", \"cpu-temp\", \"memory\", \"gpu\", \"alert\"]"
     gnome-shell --headless --virtual-monitor 1600x1000 >"$CS_TEST_OUT/shell.log" 2>&1 &

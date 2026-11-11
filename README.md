@@ -57,7 +57,9 @@ two better questions:
 
 ## Requirements
 
-- GNOME Shell 48, 49 or 50.
+- GNOME Shell 48, 49, 50 or 51. A new GNOME version is added once the
+  extension has been tested on it; until a release lists it, the Extensions app
+  shows Core Sentinel as out of date and will not switch it on.
 - Sensor drivers loaded for your hardware. Run `sensors` (from `lm-sensors`):
   whatever it lists, Core Sentinel shows. Many desktop boards need a Super I/O
   driver for fans and voltages, for example `it87` on Gigabyte boards
@@ -110,6 +112,7 @@ tools/shell-test.sh OUT_DIR [LOCALE]
                   # run the extension in an isolated headless GNOME Shell:
                   # screenshots of the panel, menu, submenus, a notification and
                   # each preferences page, and a lock/unlock check in report.json
+                  # (it runs the GNOME Shell installed on this machine)
 make install-dev  # symlink the working tree as the installed extension
 make pot          # refresh po/core-sentinel.pot and merge into the .po files
 make pack         # build dist/core-sentinel@mehdashti.github.io.shell-extension.zip

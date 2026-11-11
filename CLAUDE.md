@@ -1,6 +1,6 @@
 # Core Sentinel: working rules
 
-GNOME Shell extension (GNOME 48–50, GJS ESM), published as open source under
+GNOME Shell extension (GNOME 48–51, GJS ESM), published as open source under
 GPL-2.0-or-later at github.com/mehdashti/core-sentinel. UUID
 `core-sentinel@mehdashti.github.io`, schema `org.gnome.shell.extensions.core-sentinel`,
 gettext domain `core-sentinel`.
@@ -44,3 +44,22 @@ gettext domain `core-sentinel`.
 `make lint test`, then `tools/shell-test.sh <dir>` (and with `fa_IR.UTF-8`) and
 look at the screenshots. The headless shell is fully isolated (own D-Bus, dconf,
 extensions dir); it never touches the logged-in desktop.
+
+## A new GNOME major version
+
+The shell refuses an extension whose `shell-version` does not list the running
+major (Extensions app: "out of date"). To add one:
+
+1. Add it to `shell-version` in `src/metadata.json` and in
+   `tests/shell/harness@core-sentinel.test/metadata.json`, and to the version
+   lists in `README.md` (Requirements) and the top of this file.
+2. Run the full check above on a machine with that GNOME Shell. A failure in
+   `report.json` can come from the harness, not the extension: the harness uses
+   more shell internals (virtual input, the hot corner, window placement).
+3. On the live desktop the change shows only after logging out and back in:
+   the shell reads `metadata.json` once, at session start.
+
+GNOME 51: `Clutter.get_default_backend()` is gone (use
+`global.stage.context.get_backend()`), and a new virtual pointer first lands in
+the top-left corner, which opened the overview until `shell-test.sh` turned
+hot corners off.

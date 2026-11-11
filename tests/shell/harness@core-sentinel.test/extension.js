@@ -97,7 +97,7 @@ export default class HarnessExtension extends Extension {
         };
 
         // a virtual device takes a moment to join the seat; create it early
-        const seat = Clutter.get_default_backend().get_default_seat();
+        const seat = global.stage.context.get_backend().get_default_seat();
         const pointer = seat.create_virtual_device(Clutter.InputDeviceType.POINTER_DEVICE);
         // a real alert's banner could cover the tabs the clicks below aim at
         Main.messageTray.bannerBlocked = true;
