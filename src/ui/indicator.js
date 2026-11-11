@@ -4,6 +4,7 @@
 // nothing.
 
 import Clutter from 'gi://Clutter';
+import Gio from 'gi://Gio';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
@@ -70,10 +71,18 @@ function pressureLevel(record) {
 
 export const Indicator = GObject.registerClass(
 class Indicator extends PanelMenu.Button {
-    _init(extension, labels) {
+    /**
+     * @param {Extension} extension
+     * @param {object} labels makeLabels() result
+     * @param {AlertHistory} alertHistory the session's alerts, for "Recent alerts"
+     */
+    _init(extension, labels, alertHistory) {
         super._init(0.0, 'Core Sentinel', false);
         this._extension = extension;
         this._labels = labels;
+        this._alertHistory = alertHistory;
+        // times in the history follow the top-bar clock: 24- or 12-hour
+        this._clockSettings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
         this._last = null;
         this._enabled = new Set(['cpu']);
         this._hasAlerts = false;
@@ -142,6 +151,7 @@ class Indicator extends PanelMenu.Button {
         };
 
         this._alertRows = new RowList(section());
+        this._history = this._buildHistory();
         this._cpu = block(_('Processor'), _('Per-core load'));
         this._memory = block(_('Memory'));
         this._storage = block(_('Storage'));
@@ -152,6 +162,23 @@ class Indicator extends PanelMenu.Button {
         const settings = new PopupMenu.PopupMenuItem(_('Settings'));
         settings.connect('activate', () => this._extension.openPreferences());
         menu.addMenuItem(settings);
+    }
+
+    /** "Recent alerts": a submenu of the alert history, with a Clear item below the rows. */
+    _buildHistory() {
+        const title = _('Recent alerts');
+        const item = new PopupMenu.PopupSubMenuMenuItem(title);
+        this.menu.addMenuItem(item);
+        const rows = new PopupMenu.PopupMenuSection(); // keeps the rows above Clear as they grow
+        item.menu.addMenuItem(rows);
+        const clear = new PopupMenu.PopupMenuItem(_('Clear'));
+        clear.connect('activate', () => {
+            this._alertHistory.clear();
+            this._renderHistory();
+        });
+        item.menu.addMenuItem(clear);
+        item.visible = false;
+        return {item, title, rows: new RowList(rows), clear};
     }
 
     /**
@@ -195,11 +222,28 @@ class Indicator extends PanelMenu.Button {
             text: `⚠ ${this._labels.alertMessage(alert).title}`,
             bad: true,
         })));
+        this._renderHistory();
         this._renderCpu(s, active);
         this._renderMemory(s, active);
         this._renderStorage(s, active);
         this._renderGpus(s, state);
         this._renderSensors(s, state, active);
+    }
+
+    _renderHistory() {
+        const entries = this._alertHistory.entries;
+        const timeOpts = {
+            hour12: this._clockSettings.get_string('clock-format') === '12h',
+            now: Date.now(),
+        };
+        this._history.rows.set(entries.map(entry => ({
+            text: this._labels.historyLine(entry, timeOpts),
+            bad: entry.end === null,
+            dim: entry.dropped,
+        })));
+        this._history.item.label.text = `${this._history.title} (${formatNumber(entries.length)})`;
+        this._history.item.visible = entries.length > 0;
+        this._history.clear.visible = entries.some(entry => entry.end !== null);
     }
 
     _renderCpu(s, active) {

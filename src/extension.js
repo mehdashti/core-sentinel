@@ -10,6 +10,7 @@ import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 
 import {Monitor} from './lib/monitor.js';
 import {AlertEngine, SpinTracker, buildChecks} from './lib/alerts.js';
+import {AlertHistory} from './lib/history.js';
 import {pendingReads} from './lib/io.js';
 import {parseOverrides} from './lib/overrides.js';
 import {makeLabels} from './lib/labels.js';
@@ -51,9 +52,10 @@ export default class CoreSentinelExtension extends Extension {
         this._monitor = new Monitor();
         this._alerts = new AlertEngine();
         this._spin = new SpinTracker();
+        this._history = new AlertHistory();
         this._notifier = new Notifier(this.metadata.name,
             Gio.icon_new_for_string(`${this.path}/icons/core-sentinel-symbolic.svg`));
-        this._indicator = new Indicator(this, this._labels);
+        this._indicator = new Indicator(this, this._labels, this._history);
         this._indicator.setPanelItems(this._settings.get_strv('panel-items'));
         Main.panel.addToStatusArea(this.uuid, this._indicator);
 
@@ -141,7 +143,9 @@ export default class CoreSentinelExtension extends Extension {
             this._settings.set_strv('known-fans', [...knownFans]);
         }
 
-        const {raised, cleared, dropped} = this._alerts.update(checks, snapshot.time);
+        const events = this._alerts.update(checks, snapshot.time);
+        const {raised, cleared, dropped} = events;
+        this._history.update(events, GLib.get_real_time() / 1000, snapshot.time);
         for (const alert of raised)
             this._notifier.raise(alert.key, this._labels.alertMessage(alert), CRITICAL_TYPES.has(alert.type));
         for (const alert of cleared) {
@@ -174,6 +178,7 @@ export default class CoreSentinelExtension extends Extension {
         this._indicator = null;
         this._notifier = null;
         this._alerts = null;
+        this._history = null;
         this._spin = null;
         this._monitor = null;
         this._labels = null;

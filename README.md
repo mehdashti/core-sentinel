@@ -47,6 +47,11 @@ two better questions:
   away still raises its alarm, shown on the lock screen, and an alert that is
   still on is not announced again at every unlock. The top-bar button itself is
   hidden on the lock screen.
+- **Recent alerts** in the menu: the last 20 alerts with when each began and
+  ended (*Fan stopped: Fan 2, 03:12 to 03:14*), or *since* when for one still
+  on, so after unlocking you see what happened while you were away. Times
+  follow the top-bar clock (24- or 12-hour). Kept in memory only, so it
+  starts afresh when GNOME Shell restarts.
 - **Unconnected fan headers are recognised.** A fan never seen spinning is shown
   as *not connected* and raises no alerts. Once seen spinning it is remembered,
   so a fan that dies before you log in is still caught.

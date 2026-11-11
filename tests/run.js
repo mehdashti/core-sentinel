@@ -12,8 +12,9 @@ import {pciDeviceName, shortGpuName} from '../src/lib/gpu.js';
 import {categoryOf, findChannels, plausibleTempLimit, plausibleTemp, stableDeviceId, stableChipName, uniqueKeys,
     mapChips} from '../src/lib/hwmon.js';
 import {AlertEngine, SpinTracker, buildChecks} from '../src/lib/alerts.js';
+import {AlertHistory} from '../src/lib/history.js';
 import {parseOverrides, withOverride} from '../src/lib/overrides.js';
-import {fmt, formatBytes, formatNumber, formatPercent, formatReading, meter, truncate, setNumberLocale}
+import {fmt, formatBytes, formatNumber, formatPercent, formatReading, formatTime, meter, truncate, setNumberLocale}
     from '../src/lib/format.js';
 import {makeLabels} from '../src/lib/labels.js';
 import {readText, pendingReads} from '../src/lib/io.js';
@@ -404,6 +405,101 @@ test('switched-off rules produce no checks', () => {
     eq(checksFor(snap, {known: ['f'], settings: off}).checks.length, 0);
 });
 
+// ------------------------------------------------------------ history
+// Wall-clock times are built in local time, so the tests read the same in any time zone.
+const T0 = new Date(2026, 10, 11, 3, 12).getTime();
+const MIN = 60 * 1000;
+
+/** Runs AlertEngine and AlertHistory together, as extension.js does; `t` is in minutes after T0. */
+function historyRig(limit) {
+    const engine = new AlertEngine();
+    const history = new AlertHistory(limit);
+    return {
+        engine,
+        history,
+        tick(t, checks) {
+            const events = engine.update(checks, t * 60);
+            history.update(events, T0 + t * MIN, t * 60);
+        },
+    };
+}
+
+const diskAt = (freePercent, mountpoint = '/') =>
+    checksFor(snapshot({filesystems: [{mountpoint, free: GiB, freePercent}]})).checks;
+
+test('history: a clear is paired with its raise; an alert still on has no end', () => {
+    const rig = historyRig();
+    rig.tick(0, diskAt(5));
+    eq(rig.history.entries.map(e => [e.key, e.start, e.end]), [['disk:/', T0, null]]);
+    rig.tick(1, diskAt(8));
+    eq(rig.history.entries[0].end, null, 'not recovered yet:');
+    rig.tick(2, diskAt(20));
+    eq(rig.history.entries.map(e => [e.start, e.end]), [[T0, T0 + 2 * MIN]]);
+    rig.tick(3, diskAt(4));
+    eq(rig.history.entries.map(e => [e.start, e.end]), [[T0 + 3 * MIN, null], [T0, T0 + 2 * MIN]],
+        'raised again: a new entry, newest first:');
+});
+
+test('history: the start is when the condition began, before its hold time', () => {
+    const rig = historyRig();
+    const hot = value => checksFor(snapshot({temps: [{key: 'cpu', value, limit: 80}]})).checks;
+    rig.tick(0, hot(90));
+    eq(rig.history.entries.length, 0, 'still within the hold time:');
+    rig.tick(0.5, hot(91));
+    eq(rig.history.entries.map(e => [e.type, e.start, e.params.label]), [['temp', T0, 'cpu']]);
+});
+
+test('history: an alert whose subject is no longer watched ends, marked as dropped', () => {
+    const rig = historyRig();
+    rig.tick(0, [...diskAt(5, '/media/usb'), ...diskAt(5)]);
+    rig.tick(1, diskAt(20)); // unplugged; / recovered
+    eq(rig.history.entries.map(e => [e.key, e.end, e.dropped]),
+        [['disk:/media/usb', T0 + MIN, true], ['disk:/', T0 + MIN, false]]);
+});
+
+test('history: bounded, dropping the oldest ended alerts but never one still on', () => {
+    const rig = historyRig(3);
+    rig.tick(0, [...diskAt(5, '/a'), ...diskAt(50, '/b')]); // /a stays full throughout
+    for (let t = 1; t <= 4; t++) {
+        rig.tick(t, [...diskAt(5, '/a'), ...diskAt(5, '/b')]);
+        rig.tick(t + 0.5, [...diskAt(5, '/a'), ...diskAt(50, '/b')]);
+    }
+    eq(rig.history.entries.map(e => [e.key, e.start]), [
+        ['disk:/b', T0 + 4 * MIN], ['disk:/b', T0 + 3 * MIN], ['disk:/a', T0],
+    ]);
+    eq(rig.history.entries[2].end, null);
+});
+
+test('history: Clear forgets the alerts that ended and keeps those still on', () => {
+    const rig = historyRig();
+    rig.tick(0, [...diskAt(5, '/a'), ...diskAt(5, '/b')]);
+    rig.tick(1, [...diskAt(5, '/a'), ...diskAt(50, '/b')]);
+    rig.history.clear();
+    eq(rig.history.entries.map(e => e.key), ['disk:/a']);
+    rig.tick(2, diskAt(50, '/a'));
+    eq(rig.history.entries.map(e => e.end), [T0 + 2 * MIN], 'a kept alert still gets its end:');
+});
+
+test('history lines: still on, ended, within one minute, no longer watched', () => {
+    const labels = makeLabels(s => s);
+    const entry = (start, end) => ({type: 'fan-stopped', params: {label: 'Fan 2'}, start, end});
+    const title = '\u2068Fan stopped: Fan 2\u2069'; // isolated, for right-to-left lines
+    const opts = {now: T0 + 10 * MIN};
+    eq(labels.historyLine(entry(T0, null), opts), `${title}, since 03:12`);
+    eq(labels.historyLine(entry(T0, T0 + 2 * MIN), opts), `${title}, 03:12 to 03:14`);
+    eq(labels.historyLine(entry(T0, T0 + 20 * 1000), opts), `${title}, at 03:12`);
+    const tomorrow = {now: T0 + 24 * 60 * MIN};
+    eq(labels.historyLine(entry(T0, T0 + 2 * MIN), tomorrow), `${title}, Nov 11, 03:12 to 03:14`,
+        'the date once:');
+    eq(labels.historyLine(entry(T0, T0 + 20 * 1000), tomorrow), `${title}, at Nov 11, 03:12`);
+    const lateNight = new Date(2026, 10, 10, 23, 50).getTime();
+    eq(labels.historyLine(entry(lateNight, T0), opts), `${title}, Nov 10, 23:50 to Nov 11, 03:12`,
+        'past midnight:');
+    const dropped = (start, end) => ({...entry(start, end), dropped: true});
+    eq(labels.historyLine(dropped(T0, T0 + 2 * MIN), opts), `${title}, 03:12 to 03:14 (no longer watched)`);
+    eq(labels.historyLine(dropped(T0, T0 + 20 * 1000), opts), `${title}, at 03:12 (no longer watched)`);
+});
+
 // ---------------------------------------------------------- overrides
 test('withOverride stores only non-defaults', () => {
     let o = withOverride({}, 'k', 'hidden', true);
@@ -441,6 +537,15 @@ test('fmt, bytes, percent, readings, meter, truncate', () => {
     eq(truncate('abcdef', 4), 'abc…');
 });
 
+test('formatTime: 24- or 12-hour clock, with the date when it is not today', () => {
+    const plain = text => text.replace(/\s/g, ' '); // ICU puts a narrow no-break space before AM
+    eq(formatTime(T0), '03:12');
+    eq(plain(formatTime(T0, {hour12: true})), '3:12 AM');
+    const lastNight = new Date(2026, 10, 10, 23, 50).getTime();
+    eq(formatTime(lastNight, {now: T0}), 'Nov 10, 23:50');
+    eq(formatTime(T0, {now: T0 + 5 * MIN}), '03:12', 'same day:');
+});
+
 test('numbers follow the locale: Persian digits, decimal separator and percent sign', () => {
     setNumberLocale('fa');
     try {
@@ -448,6 +553,7 @@ test('numbers follow the locale: Persian digits, decimal separator and percent s
         eq(formatBytes(1536), '۱٫۵ KiB');
         eq(fmt('%d cores', 12), '۱۲ cores');
         eq(formatReading('temp', 43.6), '۴۴°C');
+        eq(formatTime(T0), '۰۳:۱۲');
     } finally {
         setNumberLocale('en-US');
     }

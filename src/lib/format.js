@@ -91,6 +91,36 @@ export function formatReading(kind, value) {
     }
 }
 
+function dateFormat(withDate, hour12) {
+    const key = `time:${withDate}:${hour12}`;
+    let formatter = formatters.get(key);
+    if (!formatter) {
+        formatter = new Intl.DateTimeFormat(locale, {
+            ...withDate ? {month: 'short', day: 'numeric'} : {},
+            hour: hour12 ? 'numeric' : '2-digit',
+            minute: '2-digit',
+            hourCycle: hour12 ? 'h12' : 'h23',
+        });
+        formatters.set(key, formatter);
+    }
+    return formatter;
+}
+
+/**
+ * A wall-clock time in the locale's digits and calendar: "03:12", or "3:12 AM"
+ * on a 12-hour clock, with the date in front when it is not today: "Nov 10, 23:50".
+ *
+ * @param {number} ms since the epoch
+ * @param {object} [opts]
+ * @param {boolean} [opts.hour12] a 12-hour clock (GNOME's clock-format setting)
+ * @param {number} [opts.now] ms since the epoch: the date is left out on the same day
+ */
+export function formatTime(ms, {hour12 = false, now = ms} = {}) {
+    const date = new Date(ms);
+    const today = date.toDateString() === new Date(now).toDateString();
+    return dateFormat(!today, hour12).format(date);
+}
+
 /** A text meter: meter(30) -> "▰▰▰▱▱▱▱▱▱▱" */
 export function meter(percent, width = 10) {
     const filled = Math.round(Math.min(100, Math.max(0, percent)) / 100 * width);

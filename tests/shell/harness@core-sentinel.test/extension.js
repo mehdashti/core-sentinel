@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Test-only extension, loaded next to Core Sentinel in a headless shell by
 // tools/shell-test.sh: it waits for a few readings, screenshots the panel, the
-// menu, each submenu, a notification, the lock screen and each preferences
-// page, and writes a status report.
+// menu, each submenu, a notification, switching the alert rules off, Recent
+// alerts (with a few made-up past alerts), the lock screen and each
+// preferences page, and writes a status report.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
@@ -35,6 +36,24 @@ function report(data) {
     GLib.file_set_contents(`${OUT}/report.json`, JSON.stringify(data, null, 2));
 }
 
+/**
+ * Adds an alert that has already ended to the history, the way extension.js
+ * feeds it, so Recent alerts shows each form its rows take.
+ *
+ * @param {object} ext the Core Sentinel extension object
+ * @param {object} alert {key, type, params}
+ * @param {number} ago seconds since it began
+ * @param {number} lasted seconds it lasted
+ */
+function pastAlert(ext, alert, ago, lasted) {
+    const wall = GLib.get_real_time() / 1000;
+    const mono = GLib.get_monotonic_time() / 1e6;
+    const raised = {...alert, since: mono - ago};
+    ext._history.update({raised: [raised], cleared: [], dropped: []}, wall - ago * 1000, mono - ago);
+    ext._history.update({raised: [], cleared: [raised], dropped: []}, wall - (ago - lasted) * 1000,
+        mono - ago + lasted);
+}
+
 async function click(pointer, x, y) {
     // the first motion of a new virtual pointer lands at y = 0; the second is exact
     for (let i = 0; i < 2; i++) {
@@ -63,6 +82,11 @@ export default class HarnessExtension extends Extension {
         const result = {};
 
         await shot('panel');
+        const state = ext.stateObj;
+        pastAlert(state, {key: 'harness:fan', type: 'fan-stopped', params: {label: 'Fan 2'}}, 2 * 3600, 120);
+        pastAlert(state, {key: 'harness:swap', type: 'swap', params: {used: 2 ** 30}}, 40 * 60, 20);
+        pastAlert(state, {key: 'harness:temp', type: 'temp', params: {label: 'CPU', value: 95, limit: 95}},
+            26 * 3600, 180);
         indicator.menu.open(false);
         await sleep(3); // one more tick renders the open menu
         await shot('menu');
@@ -75,16 +99,15 @@ export default class HarnessExtension extends Extension {
         indicator.menu.close(false);
 
         // a notification, to see the source icon
-        ext.stateObj._notifier.raise('harness', {title: 'Test alert', body: 'Raised by the test harness.'}, false);
+        state._notifier.raise('harness', {title: 'Test alert', body: 'Raised by the test harness.'}, false);
         await sleep(1.5);
         await shot('notification');
-        ext.stateObj._notifier.withdraw('harness');
+        state._notifier.withdraw('harness');
 
         // A setting applies at once, not at the next reading, and switching the
         // alert rules off takes back the alarms already shown. The highest disk
         // threshold (50% free) raises a disk alert on most machines; the report
         // is meaningful when activeBefore > 0.
-        const state = ext.stateObj;
         const rules = ['alert-fan', 'alert-temp', 'alert-disk', 'alert-swap', 'alert-thrash'];
         const settle = 0.5; // less than a reading interval
         state._settings.set_uint('disk-free-percent', 50);
@@ -99,6 +122,31 @@ export default class HarnessExtension extends Extension {
         result.switchOff.notificationsAfter = state._notifier._byKey.size;
         [...rules, 'disk-free-percent'].forEach(key => state._settings.reset(key));
         await sleep(3);
+
+        // Recent alerts: the made-up past alerts above, and the disk alert the
+        // switch-off took back (no longer watched)
+        const history = indicator._history;
+        indicator.menu.open(false);
+        history.item.setSubmenuShown(true);
+        await sleep(1.5);
+        await shot('menu-history');
+        // a menu taller than the screen gives the open submenu a scrollbar
+        const scroll = history.item.menu.actor.vadjustment;
+        scroll.value = scroll.upper - scroll.page_size;
+        await sleep(0.5);
+        await shot('menu-history-end');
+        const entries = () => state._history.entries;
+        result.history = {
+            entries: entries().length,
+            dropped: entries().filter(e => e.dropped).length,
+            rows: history.rows.length,
+            visible: history.item.visible,
+            clearVisible: history.clear.visible,
+        };
+        history.clear.activate(Clutter.get_current_event()); // closes the menu, as a click does
+        result.history.entriesAfterClear = entries().length;
+        result.history.ongoingAfterClear = entries().filter(e => e.end === null).length;
+        indicator.menu.close(false);
 
         // Locking must neither disable the extension nor leave the button on the lock screen.
         Main.screenShield.lock(false);
