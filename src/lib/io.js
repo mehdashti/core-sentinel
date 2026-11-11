@@ -39,13 +39,60 @@ export function pendingReads() {
 
 /**
  * @param {string} path
+ * @param {string} key what counts as "the same read" for the pending guard;
+ *   a reader on a schedule of its own passes its own key, so it never gets
+ *   null just because another reader of the same file is in flight
  * @returns {Promise<string|null>} the file's text, or null if it can't be read
  */
-export function readText(path) {
-    return exclusive(path, async () => {
+export function readText(path, key = path) {
+    return exclusive(key, async () => {
         const [bytes] = await Gio.File.new_for_path(path).load_contents_async(null);
         return decoder.decode(bytes);
     }, null);
+}
+
+/**
+ * Reads a long list of small files (one per process), at most `limit` at a
+ * time. Each answer is dispatched at default priority, ahead of the frame
+ * clock; with few reads in flight that queue empties between answers, so
+ * frames and input are not held up for the whole list. Costs about half of
+ * readText() per file, having one promise for the lot.
+ *
+ * @param {string[]} paths
+ * @param {number} limit reads in flight at once
+ * @returns {Promise<Array<string|null>>} each file's text, in the order of
+ *   `paths`; null where it can't be read or its last read is still pending
+ */
+export function readTexts(paths, limit) {
+    return new Promise(resolve => {
+        const texts = new Array(paths.length).fill(null);
+        let next = 0;
+        let active = 0;
+        const pump = () => {
+            while (active < limit && next < paths.length) {
+                const i = next++;
+                const path = paths[i];
+                if (pending.has(path))
+                    continue;
+                pending.add(path);
+                active++;
+                Gio.File.new_for_path(path).load_contents_async(null, (file, result) => {
+                    try {
+                        const [, bytes] = file.load_contents_finish(result); // [ok, contents, etag]
+                        texts[i] = decoder.decode(bytes);
+                    } catch {
+                        // gone (a process that ended) or unreadable: stays null
+                    }
+                    pending.delete(path);
+                    active--;
+                    pump();
+                });
+            }
+            if (active === 0)
+                resolve(texts);
+        };
+        pump();
+    });
 }
 
 /**

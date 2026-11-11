@@ -27,6 +27,10 @@ two better questions:
   and as numbers in the menu.
 - **Memory** used without reclaimable page cache; zram (with its compression
   ratio) and swap on disk shown apart.
+- **The processes behind the load.** While the menu is open, the five busiest
+  processes by CPU and the five with the most private memory, each with its
+  process ID. The first of each list is named in its submenu's title, so when
+  the pressure dots say CPU or memory is the bottleneck, the menu says who.
 - **Storage**: free space per filesystem, read/write throughput and busy time
   per disk.
 - **GPU** (AMD, via `amdgpu`): load, VRAM, temperature, fan and board power. A
@@ -98,6 +102,8 @@ Then log out and back in (Wayland) and enable *Core Sentinel* in the Extensions 
 | Memory used | `/proc/meminfo` | `MemTotal − MemAvailable`, the kernel's own estimate of what can be handed out without swapping. |
 | zram / swap | `/proc/swaps`, `/sys/block/zram*/mm_stat` | Swap on disk is where slowdowns begin; zram is compressed RAM. |
 | Disk I/O | `/proc/diskstats` | Whole disks only; busy is the share of time with I/O in flight. |
+| Process CPU | `/proc/[pid]/stat`, `/proc/stat` | A process (all its threads together) gets its part of the physical-core load: its CPU time over the busy time of all CPUs between two readings. The shares add up to the top-bar figure, less the time spent on interrupts, which no process owns. While cores are idle, one busy thread is one core: 8% on a 12-core CPU. Kernel threads are shown in brackets, `[kswapd0]`. |
+| Process memory | `/proc/[pid]/status` | Private memory in RAM (`RssAnon`). Shared memory is left out: a database's shared buffers would count again in each of its processes. Read only for the few processes whose resident size could still place them in the list. |
 | Sensors | `/sys/class/hwmon` | Keyed by driver and device address (`it8689@it87.2624/fan1`, `nvme@0000:02:00.0/temp1`), never by a number handed out in probe order (`hwmonN`, `nvme0`, `phy0`, an i2c bus), which can change between boots. |
 | Temperature limits | `tempN_crit`, then `tempN_max` | Implausible values (0, 127, 255 °C) are ignored. A heat alert ends 5 °C below the limit. |
 | Fan stall | `fanN_input`, `pwmN` | 0 RPM while the duty cycle is at or above the stall threshold (20% by default) for the grace period (10 s). |
@@ -105,6 +111,13 @@ Then log out and back in (Wayland) and enable *Core Sentinel* in the Extensions 
 Everything is read asynchronously from `/proc` and `/sys` every two seconds (configurable).
 A file that stops answering (a hung driver, a dying disk) reads as unavailable
 until it answers again; it never freezes the other readings.
+The process lists are read only while the menu is open, every two seconds,
+one file per process and at most four at a time; on a Ryzen 9 7900X one
+reading of about 900 processes costs the shell about 35 ms of CPU time, in
+small pieces between frames.
+Per-process disk I/O is not shown: the kernel shows it to a user only for
+their own processes, and I/O bottlenecks are often caused by system services
+that such a list would leave out.
 Core Sentinel uses no network and starts no helper processes.
 
 ## Development
@@ -112,7 +125,8 @@ Core Sentinel uses no network and starts no helper processes.
 ```sh
 make test         # unit tests (gjs)
 make lint         # ESLint
-make snapshot     # print what the data layer sees on this machine
+make snapshot     # print what the data layer sees on this machine, and how
+                  # long one reading and one process list take
 tools/shell-test.sh OUT_DIR [LOCALE]
                   # run the extension in an isolated headless GNOME Shell:
                   # screenshots of the panel, menu, submenus, a notification and

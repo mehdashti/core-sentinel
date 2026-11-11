@@ -14,10 +14,13 @@ import {categoryOf, findChannels, plausibleTempLimit, plausibleTemp, stableDevic
 import {AlertEngine, SpinTracker, buildChecks} from '../src/lib/alerts.js';
 import {AlertHistory} from '../src/lib/history.js';
 import {parseOverrides, withOverride} from '../src/lib/overrides.js';
-import {fmt, formatBytes, formatNumber, formatPercent, formatReading, formatTime, meter, truncate, setNumberLocale}
+import {fmt, formatBytes, formatId, formatNumber, formatPercent, formatReading, formatTime, meter, truncate,
+    setNumberLocale}
     from '../src/lib/format.js';
 import {makeLabels} from '../src/lib/labels.js';
-import {readText, pendingReads} from '../src/lib/io.js';
+import {readText, readTexts, pendingReads} from '../src/lib/io.js';
+import {parsePidStat, safeName, statusBytes, pageSizeFrom, cpuShares, busyTicksBetween, largestPrivate,
+    ProcessSampler} from '../src/lib/processes.js';
 
 // Numbers read the same on every machine; Persian has a test of its own.
 setNumberLocale('en-US');
@@ -517,6 +520,79 @@ test('parseOverrides tolerates garbage', () => {
     eq(parseOverrides('{"a":{"hidden":true}}'), {a: {hidden: true}});
 });
 
+// ---------------------------------------------------------- processes
+// proc_pid_stat(5): pid (comm) state ppid pgrp session tty tpgid flags minflt
+// cminflt majflt cmajflt utime stime cutime cstime priority nice threads
+// itrealvalue starttime vsize rss ...
+function pidStat(pid, comm, {flags = 4194560, utime = 0, stime = 0, start = 1000, rss = 0} = {}) {
+    return `${pid} (${comm}) S 1 ${pid} ${pid} 0 -1 ${flags} 10 0 0 0 ${utime} ${stime} 0 0 20 0 1 0 ` +
+        `${start} 4096000 ${rss} 18446744073709551615 1 1 0 0 0 0 0 0 0 0 0 0 17 3 0 0 0 0 0\n`;
+}
+
+test('parsePidStat: fields after the name, which may hold spaces and parentheses', () => {
+    eq(parsePidStat(pidStat(42, 'Web Content', {utime: 120, stime: 30, start: 5000, rss: 2560})),
+        {name: 'Web Content', kernel: false, ticks: 150, start: 5000, rssPages: 2560});
+    eq(parsePidStat(pidStat(7, 'a) S 1 2 (b')).name, 'a) S 1 2 (b');
+    eq(parsePidStat(pidStat(2, 'kthreadd', {flags: 0x208040})).kernel, true, 'PF_KTHREAD:');
+    eq(parsePidStat('42 (truncated) S 1 2'), null);
+    eq(parsePidStat(''), null);
+});
+
+test('safeName replaces control and formatting characters, keeps the rest', () => {
+    eq(safeName('firefox-esr'), 'firefox-esr');
+    eq(safeName('پایتون ۳'), 'پایتون ۳');
+    eq(safeName('ok\n⚠ Fan stopped'), 'ok\uFFFD⚠ Fan stopped', 'a fake second row:');
+    eq(safeName('\u202Eexe.txt'), '\uFFFDexe.txt', 'a bidi override:');
+    eq(safeName('a\u200Bb\u2028c\u0007'), 'a\uFFFDb\uFFFDc\uFFFD');
+});
+
+test('statusBytes and pageSizeFrom', () => {
+    const status = 'Name:\tfirefox\nVmRSS:\t  409600 kB\nRssAnon:\t  307200 kB\nRssFile:\t 1024 kB\n';
+    eq(statusBytes(status, 'RssAnon'), 300 * MiB);
+    eq(statusBytes(status, 'VmRSS'), 400 * MiB);
+    eq(statusBytes('Name:\tkthreadd\n', 'RssAnon'), null, 'a kernel thread has none:');
+    eq(pageSizeFrom(400 * MiB, 102400), 4096);
+    eq(pageSizeFrom(400 * MiB + 12345, 102400), 4096, 'grown between the two reads:');
+    eq(pageSizeFrom(400 * MiB, 25600), 16384);
+    eq(pageSizeFrom(400 * MiB, 6400), 65536);
+    eq(pageSizeFrom(0, 0), 4096);
+});
+
+test('busyTicksBetween sums busy ticks over all CPUs', () => {
+    const prev = new Map([[0, {total: 100, idle: 80}], [1, {total: 100, idle: 100}]]);
+    const cur = new Map([[0, {total: 300, idle: 130}], [1, {total: 300, idle: 250}], [2, {total: 50, idle: 0}]]);
+    eq(busyTicksBetween(prev, cur), 150 + 50, 'a CPU without a previous reading is left out:');
+});
+
+test('cpuShares: a part of the physical-core load in proportion to CPU time', () => {
+    const before = (start, ticks) => ({start, ticks});
+    const prev = new Map([[10, before(500, 1000)], [11, before(500, 40)], [12, before(500, 0)], [13, null],
+        [14, before(500, 70)]]);
+    const procs = [
+        {pid: 10, start: 500, ticks: 1200}, // +200
+        {pid: 11, start: 500, ticks: 140}, // +100
+        {pid: 12, start: 500, ticks: 0}, // idle: left out
+        {pid: 13, start: 500, ticks: 9000}, // not read last time: unknown, left out
+        {pid: 14, start: 900, ticks: 50}, // pid reused by a new process: all 50 count
+        {pid: 15, start: 950, ticks: 50}, // new: all 50 count
+    ];
+    // 400 busy ticks in all; the physical-core load was 40%
+    const shares = cpuShares(prev, procs, 400, 40);
+    eq(shares.map(p => [p.pid, p.share]), [[10, 20], [11, 10], [14, 5], [15, 5]]);
+    eq(cpuShares(prev, procs, 0, 40), [], 'no busy time:');
+    eq(cpuShares(new Map(), [{pid: 1, start: 0, ticks: 99999}], 400, 40)[0].share, 40,
+        'never more than the whole load:');
+    eq(cpuShares(new Map([[1, before(0, 1000)]]), [{pid: 1, start: 0, ticks: 999}], 400, 40), [],
+        'a counter that went back:');
+});
+
+test('cpuShares on an otherwise idle CPU: one busy thread is one physical core', () => {
+    // 12 cores, 24 threads, 2 s at 100 ticks/s: one thread busy, everything else idle
+    const shares = cpuShares(new Map([[1, {start: 0, ticks: 0}]]), [{pid: 1, start: 0, ticks: 200}],
+        200, 100 / 12);
+    near(shares[0].share, 100 / 12);
+});
+
 // ------------------------------------------------------------- format
 test('fmt, bytes, percent, readings, meter, truncate', () => {
     eq(fmt('%s of %s (%d%%)', 'a', 'b', 5), 'a of b (5%)');
@@ -535,6 +611,8 @@ test('fmt, bytes, percent, readings, meter, truncate', () => {
     eq(meter(30), '▰▰▰▱▱▱▱▱▱▱');
     eq(meter(150, 4), '▰▰▰▰');
     eq(truncate('abcdef', 4), 'abc…');
+    eq(formatId(271689), '271689', 'no grouping:');
+    eq(formatNumber(271689), '271,689');
 });
 
 test('formatTime: 24- or 12-hour clock, with the date when it is not today', () => {
@@ -554,6 +632,7 @@ test('numbers follow the locale: Persian digits, decimal separator and percent s
         eq(fmt('%d cores', 12), '۱۲ cores');
         eq(formatReading('temp', 43.6), '۴۴°C');
         eq(formatTime(T0), '۰۳:۱۲');
+        eq(formatId(271689), '۲۷۱۶۸۹');
     } finally {
         setNumberLocale('en-US');
     }
@@ -623,8 +702,73 @@ async function ioTests() {
     });
 }
 
+async function processTests() {
+    await testAsync('largestPrivate reads private memory only as far down as it can matter', async () => {
+        // rss and private memory in MiB, largest rss first
+        const table = [[1, 2000, 15], [2, 1600, 1500], [3, 1300, 1200], [4, 900, 800], [5, 800, 700],
+            [6, 700, 650], [7, 600, 100], [8, 500, 450], [9, 400, 390], [10, 300, 290], [11, 0, 0]];
+        const procs = table.map(([pid, rss]) => ({pid, rss: rss * MiB}));
+        const read = [];
+        const top = await largestPrivate(procs, 3, async proc => {
+            read.push(proc.pid);
+            await sleep(1);
+            return proc.pid === 4 ? null : table[proc.pid - 1][2] * MiB; // 4 ended meanwhile
+        });
+        eq(top.map(p => [p.pid, p.memory / MiB]), [[2, 1500], [3, 1200], [5, 700]]);
+        // rounds of 3: [1 2 3], [4 5 6]; then the 3rd largest (700) beats the next rss (600)
+        eq(read, [1, 2, 3, 4, 5, 6]);
+        eq(await largestPrivate(procs, 3, async () => null), [], 'nothing readable:');
+        eq((await largestPrivate(procs.slice(0, 2), 3, async p => p.rss)).length, 2, 'fewer than asked:');
+    });
+
+    await testAsync('readTexts keeps at most `limit` reads in flight, in order, null where unreadable', async () => {
+        const dir = GLib.dir_make_tmp('core-sentinel-XXXXXX');
+        try {
+            GLib.file_set_contents(`${dir}/a`, 'A');
+            GLib.file_set_contents(`${dir}/b`, 'B');
+            eq(await readTexts([`${dir}/a`, `${dir}/missing`, `${dir}/b`], 2), ['A', null, 'B']);
+            eq(await readTexts([], 4), []);
+
+            // FIFOs with no writer block like a hung file
+            const fifos = [0, 1, 2].map(i => `${dir}/fifo${i}`);
+            GLib.spawn_command_line_sync(`mkfifo ${fifos.join(' ')}`);
+            const all = readTexts(fifos, 2);
+            eq(pendingReads(), fifos.slice(0, 2), 'two in flight, the third waits:');
+            GLib.spawn_command_line_sync(`sh -c 'echo 0 > ${fifos[0]}'`);
+            await sleep(100);
+            eq(pendingReads(), fifos.slice(1), 'the third starts once one is done:');
+            eq(await readText(fifos[1]), null, 'a file still pending reads as null:');
+            GLib.spawn_command_line_sync(`sh -c 'echo 1 > ${fifos[1]}; echo 2 > ${fifos[2]}'`);
+            eq(await all, ['0\n', '1\n', '2\n']);
+            eq(pendingReads(), []);
+        } finally {
+            GLib.spawn_command_line_sync(`rm -r ${dir}`);
+        }
+    });
+
+    await testAsync('ProcessSampler on this machine: memory at once, CPU shares from the second reading', async () => {
+        const self = Number(new TextDecoder().decode(GLib.file_get_contents('/proc/self/stat')[1]).split(' ')[0]);
+        const sampler = new ProcessSampler({count: 50});
+        const first = await sampler.sample();
+        eq(first.cpu, null);
+        if (first.processes < 1 || first.memory.length < 1)
+            throw new Error(`read ${first.processes} processes, ${first.memory.length} by memory`);
+        // burn some CPU so this process has a share to find
+        const until = GLib.get_monotonic_time() + 300000;
+        while (GLib.get_monotonic_time() < until)
+            ;
+        const second = await sampler.sample();
+        if (!second.cpu?.length || second.cpu.some(p => !(p.share > 0 && p.share <= 100)))
+            throw new Error(`cpu: ${JSON.stringify(second.cpu)}`);
+        if (!second.cpu.some(p => p.pid === self))
+            throw new Error(`this process is not among the busiest: ${second.cpu.map(p => p.name)}`);
+        sampler.reset();
+        eq((await sampler.sample()).cpu, null, 'after reset:');
+    });
+}
+
 const loop = new GLib.MainLoop(null, false);
-ioTests().finally(() => loop.quit());
+ioTests().then(processTests).finally(() => loop.quit());
 loop.run();
 
 print(`${passed} passed, ${failed} failed`);

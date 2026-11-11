@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // The top-bar button and its menu. The panel part is redrawn every tick; the
 // menu only while it is open (and once when it opens), so a closed menu costs
-// nothing.
+// nothing. The process lists are read only while the menu is open, on a timer
+// of their own.
 
 import Clutter from 'gi://Clutter';
 import Gio from 'gi://Gio';
+import GLib from 'gi://GLib';
 import GObject from 'gi://GObject';
 import St from 'gi://St';
 
@@ -12,13 +14,21 @@ import * as PanelMenu from 'resource:///org/gnome/shell/ui/panelMenu.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {gettext as _} from 'resource:///org/gnome/shell/extensions/extension.js';
 
-import {fmt, formatBytes, formatNumber, formatPercent, formatRate, formatReading, isolate, meter, truncate}
-    from '../lib/format.js';
+import {fmt, formatBytes, formatId, formatNumber, formatPercent, formatRate, formatReading, isolate, meter,
+    truncate} from '../lib/format.js';
 import {PANEL_ITEMS} from '../lib/panel.js';
+import {ProcessSampler} from '../lib/processes.js';
 
 // PSI "some" avg10 thresholds for the pressure dots, in %
 const PRESSURE_WARN = 5;
 const PRESSURE_CRIT = 25;
+
+// While the menu is open the process lists are read every PROCESS_SECONDS;
+// CPU shares need two readings, so the second comes sooner.
+const PROCESS_SECONDS = 2;
+const FIRST_SHARES_MS = 1000;
+const PROCESS_ROWS = 5;
+const PROCESS_NAME_LENGTH = 32;
 
 // A row's base direction comes from its first strong character, so in an RTL
 // locale a row opening with "RX 550" or "nvme0n1" would be laid out
@@ -58,6 +68,20 @@ class RowList {
 
 function panelLabel(text) {
     return new St.Label({text, y_align: Clutter.ActorAlign.CENTER, style_class: 'cs-panel-label'});
+}
+
+/**
+ * A process for a menu row. Its name is the process's own choice: it reaches
+ * the label as plain text (never markup), stripped of control characters
+ * (lib/processes.js) and isolated, so it cannot turn the row around.
+ */
+function processName(proc) {
+    const name = truncate(proc.name, PROCESS_NAME_LENGTH);
+    return isolate(proc.kernel ? `[${name}]` : name);
+}
+
+function processRow(proc, value) {
+    return {text: `${processName(proc)} (${formatId(proc.pid)}): ${value}`};
 }
 
 function pressureLevel(record) {
@@ -109,11 +133,25 @@ class Indicator extends PanelMenu.Button {
         for (const id of PANEL_ITEMS)
             box.add_child(this._panel[id]);
 
+        this._processes = new ProcessSampler({count: PROCESS_ROWS});
+        this._processTimerId = 0;
+        this._processRun = 0;
+
         this._buildMenu();
         this.menu.connect('open-state-changed', (_menu, open) => {
-            if (open && this._last)
+            if (!open) {
+                this._stopProcesses();
+                return;
+            }
+            if (this._last)
                 this._renderMenu();
+            this._startProcesses();
         });
+    }
+
+    _onDestroy() {
+        this._stopProcesses();
+        super._onDestroy();
     }
 
     /** @param {string[]} ids panel items to show */
@@ -152,8 +190,8 @@ class Indicator extends PanelMenu.Button {
 
         this._alertRows = new RowList(section());
         this._history = this._buildHistory();
-        this._cpu = block(_('Processor'), _('Per-core load'));
-        this._memory = block(_('Memory'));
+        this._cpu = block(_('Processor'), _('Per-core load'), _('Top processes'));
+        this._memory = block(_('Memory'), _('Top processes'));
         this._storage = block(_('Storage'));
         this._gpu = block(_('Graphics'));
         this._sensors = block(_('Sensors'), _('Temperatures'), _('Fans'), _('Voltages and power'));
@@ -358,6 +396,62 @@ class Indicator extends PanelMenu.Button {
         }
         this._gpu.rows.set(rows);
         this._gpu.heading.visible = rows.length > 0;
+    }
+
+    _startProcesses() {
+        this._stopProcesses();
+        this._processes.reset();
+        this._renderProcesses(null);
+        this._sampleProcesses(this._processRun);
+    }
+
+    _stopProcesses() {
+        this._processRun++; // a reading still in flight is dropped
+        if (this._processTimerId) {
+            GLib.source_remove(this._processTimerId);
+            this._processTimerId = 0;
+        }
+    }
+
+    async _sampleProcesses(run) {
+        let result = null;
+        try {
+            result = await this._processes.sample();
+        } catch (e) {
+            logError(e, 'Core Sentinel: reading processes failed');
+        }
+        if (run !== this._processRun) // the menu closed, or the button is gone
+            return;
+        if (result)
+            this._renderProcesses(result);
+        const delay = result?.cpu ? PROCESS_SECONDS * 1000 : FIRST_SHARES_MS;
+        this._processTimerId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            this._processTimerId = 0;
+            this._sampleProcesses(run);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    /** @param {object|null} result ProcessSampler.sample(); null until the first arrives */
+    _renderProcesses(result) {
+        const measuring = {text: _('Measuring…'), dim: true};
+        const cpu = this._cpu.subs[1];
+        let cpuRows = [measuring];
+        if (result?.cpu?.length === 0)
+            cpuRows = [{text: _('No process is busy'), dim: true}];
+        else if (result?.cpu)
+            cpuRows = result.cpu.map(p => processRow(p, formatPercent(p.share, 1)));
+        cpu.rows.set([...cpuRows, {text: _('Shares of the load on physical cores'), dim: true}]);
+        const busiest = result?.cpu?.[0];
+        cpu.item.label.text = busiest
+            ? `${cpu.title}: ${processName(busiest)} ${formatPercent(busiest.share, 1)}` : cpu.title;
+
+        const memory = this._memory.subs[0];
+        const memoryRows = result ? result.memory.map(p => processRow(p, formatBytes(p.memory))) : [measuring];
+        memory.rows.set([...memoryRows, {text: _('Private memory in RAM; shared memory is not counted'), dim: true}]);
+        const largest = result?.memory[0];
+        memory.item.label.text = largest
+            ? `${memory.title}: ${processName(largest)} ${formatBytes(largest.memory)}` : memory.title;
     }
 
     _renderSensors(s, state, active) {

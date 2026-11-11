@@ -2,11 +2,15 @@
 // Print what Core Sentinel sees on this machine, without GNOME Shell:
 //   gjs -m tools/snapshot.js [--json]
 // Takes two samples one second apart (rates and CPU load need a delta) and
-// runs the alert rules over the second one with default settings.
+// runs the alert rules over the second one with default settings. Also reads
+// the top processes, as the open menu does, and times both: wall time, and
+// CPU time on the main thread, where the shell runs its JavaScript.
 
 import GLib from 'gi://GLib';
 import {Monitor} from '../src/lib/monitor.js';
+import {ProcessSampler} from '../src/lib/processes.js';
 import {buildChecks} from '../src/lib/alerts.js';
+import {listDir, readText} from '../src/lib/io.js';
 
 const DEFAULT_ALERTS = {
     alertFan: true, fanStallPwm: 20, fanStallSeconds: 10, alertTemp: true,
@@ -15,20 +19,43 @@ const DEFAULT_ALERTS = {
 };
 
 const GiB = 1024 ** 3;
+const MiB = 1024 ** 2;
 const gib = n => `${(n / GiB).toFixed(1)} GiB`;
+
+/** @returns {Promise<number>} CPU time of a thread of this process, in ms */
+async function threadMs(tid) {
+    const text = await readText(`/proc/self/task/${tid}/schedstat`);
+    return text === null ? 0 : Number(text.split(' ')[0]) / 1e6;
+}
+
+/** @returns {Promise<{wall: number, main: number, all: number}>} ms taken by fn */
+async function timed(fn) {
+    const tids = async () => (await listDir('/proc/self/task')).filter(t => /^\d+$/.test(t));
+    const all = async () => (await Promise.all((await tids()).map(threadMs))).reduce((a, b) => a + b, 0);
+    const pid = (await readText('/proc/self/stat')).split(' ')[0];
+    const [main0, all0, t0] = [await threadMs(pid), await all(), GLib.get_monotonic_time()];
+    const result = await fn();
+    const wall = (GLib.get_monotonic_time() - t0) / 1000;
+    return {result, wall, main: await threadMs(pid) - main0, all: await all() - all0};
+}
 
 async function main() {
     const monitor = new Monitor();
+    const processes = new ProcessSampler();
     await monitor.init();
     await monitor.sample();
+    await processes.sample();
     await new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 1000, () => {
         resolve();
         return GLib.SOURCE_REMOVE;
     }));
-    const snap = await monitor.sample();
+    const tick = await timed(() => monitor.sample());
+    const procs = await timed(() => processes.sample());
+    const snap = tick.result;
 
     if (ARGV.includes('--json')) {
-        print(JSON.stringify(snap, (k, v) => v instanceof Map ? Object.fromEntries(v) : v, 2));
+        print(JSON.stringify({...snap, processes: procs.result},
+            (k, v) => v instanceof Map ? Object.fromEntries(v) : v, 2));
         return;
     }
 
@@ -63,6 +90,13 @@ async function main() {
     print(`Checks   ${checks.length} (${checks.filter(c => c.bad).length} bad now): ` +
         checks.filter(c => c.bad).map(c => c.key).join(', '));
     print(`Spinning ${spinning.join(', ')}`);
+    for (const p of procs.result.cpu)
+        print(`Process  cpu ${p.name.padEnd(16)} ${String(p.pid).padStart(7)} ${p.share.toFixed(1)}% of the physical-core load`);
+    for (const p of procs.result.memory)
+        print(`Process  mem ${p.name.padEnd(16)} ${String(p.pid).padStart(7)} ${(p.memory / MiB).toFixed(0)} MiB private (resident ${(p.rss / MiB).toFixed(0)} MiB)`);
+    const ms = t => `${t.wall.toFixed(1)} ms (CPU: ${t.main.toFixed(1)} ms main thread, ${t.all.toFixed(1)} ms all threads)`;
+    print(`Timing   readings ${ms(tick)}`);
+    print(`Timing   ${procs.result.processes} processes ${ms(procs)}`);
 }
 
 const loop = new GLib.MainLoop(null, false);

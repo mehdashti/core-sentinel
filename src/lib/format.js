@@ -15,12 +15,12 @@ export function setNumberLocale(tag) {
     formatters.clear();
 }
 
-function numberFormat(digits, style) {
-    const key = `${style}:${digits}`;
+function numberFormat(digits, style, useGrouping = true) {
+    const key = `${style}:${digits}:${useGrouping}`;
     let formatter = formatters.get(key);
     if (!formatter) {
         formatter = new Intl.NumberFormat(locale, {
-            style, minimumFractionDigits: digits, maximumFractionDigits: digits,
+            style, minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping,
         });
         formatters.set(key, formatter);
     }
@@ -33,6 +33,11 @@ function numberFormat(digits, style) {
  */
 export function formatNumber(value, digits = 0) {
     return numberFormat(digits, 'decimal').format(value);
+}
+
+/** An identifier such as a process ID: the locale's digits, never grouped (4123, not 4,123). */
+export function formatId(value) {
+    return numberFormat(0, 'decimal', false).format(value);
 }
 
 /**

@@ -90,7 +90,7 @@ export default class HarnessExtension extends Extension {
         indicator.menu.open(false);
         await sleep(3); // one more tick renders the open menu
         await shot('menu');
-        const subs = [...indicator._cpu.subs, ...indicator._sensors.subs];
+        const subs = [...indicator._cpu.subs, ...indicator._memory.subs, ...indicator._sensors.subs];
         for (const [i, sub] of subs.entries()) {
             sub.item.setSubmenuShown(true);
             await sleep(1.5);

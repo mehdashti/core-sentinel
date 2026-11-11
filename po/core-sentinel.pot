@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Core Sentinel\n"
 "Report-Msgid-Bugs-To: https://github.com/mehdashti/core-sentinel/issues\n"
-"POT-Creation-Date: 2026-11-11 09:32+0300\n"
+"POT-Creation-Date: 2026-11-11 09:50+0300\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -69,7 +69,7 @@ msgstr ""
 msgid "Alerts"
 msgstr ""
 
-#: src/prefs.js:101 src/ui/indicator.js:159
+#: src/prefs.js:101 src/ui/indicator.js:197
 msgid "Fans"
 msgstr ""
 
@@ -99,7 +99,7 @@ msgstr ""
 msgid "Seconds a fan problem must last before an alert"
 msgstr ""
 
-#: src/prefs.js:109 src/ui/indicator.js:159
+#: src/prefs.js:109 src/ui/indicator.js:197
 msgid "Temperatures"
 msgstr ""
 
@@ -113,7 +113,7 @@ msgstr ""
 msgid "Alert when a sensor reaches its limit"
 msgstr ""
 
-#: src/prefs.js:113 src/lib/labels.js:17 src/ui/indicator.js:157
+#: src/prefs.js:113 src/lib/labels.js:17 src/ui/indicator.js:195
 msgid "Storage"
 msgstr ""
 
@@ -129,7 +129,7 @@ msgstr ""
 msgid "Alert below this much free space (%)"
 msgstr ""
 
-#: src/prefs.js:119 src/lib/labels.js:16 src/ui/indicator.js:156
+#: src/prefs.js:119 src/lib/labels.js:16 src/ui/indicator.js:194
 msgid "Memory"
 msgstr ""
 
@@ -208,7 +208,7 @@ msgstr ""
 msgid "not mounted"
 msgstr ""
 
-#: src/prefs.js:165 src/ui/indicator.js:159
+#: src/prefs.js:165 src/ui/indicator.js:197
 msgid "Sensors"
 msgstr ""
 
@@ -270,7 +270,7 @@ msgstr ""
 msgid "0 means no alert: the hardware reports no limit"
 msgstr ""
 
-#: src/lib/labels.js:14 src/ui/indicator.js:155
+#: src/lib/labels.js:14 src/ui/indicator.js:193
 msgid "Processor"
 msgstr ""
 
@@ -278,7 +278,7 @@ msgstr ""
 msgid "Motherboard"
 msgstr ""
 
-#: src/lib/labels.js:18 src/ui/indicator.js:158
+#: src/lib/labels.js:18 src/ui/indicator.js:196
 msgid "Graphics"
 msgstr ""
 
@@ -444,102 +444,122 @@ msgstr ""
 msgid "%s, %s to %s"
 msgstr ""
 
-#: src/ui/indicator.js:155
+#: src/ui/indicator.js:193
 msgid "Per-core load"
 msgstr ""
 
-#: src/ui/indicator.js:159
+#: src/ui/indicator.js:193 src/ui/indicator.js:194
+msgid "Top processes"
+msgstr ""
+
+#: src/ui/indicator.js:197
 msgid "Voltages and power"
 msgstr ""
 
-#: src/ui/indicator.js:162
+#: src/ui/indicator.js:200
 msgid "Settings"
 msgstr ""
 
-#: src/ui/indicator.js:169
+#: src/ui/indicator.js:207
 msgid "Recent alerts"
 msgstr ""
 
-#: src/ui/indicator.js:174
+#: src/ui/indicator.js:212
 msgid "Clear"
 msgstr ""
 
-#: src/ui/indicator.js:253
+#: src/ui/indicator.js:291
 #, javascript-format
 msgid "%s on physical cores, %s on logical threads"
 msgstr ""
 
-#: src/ui/indicator.js:256
+#: src/ui/indicator.js:294
 #, javascript-format
 msgid "%d cores, %d threads"
 msgstr ""
 
-#: src/ui/indicator.js:261
+#: src/ui/indicator.js:299
 #, javascript-format
 msgid "Tasks waiting for a CPU: %s (10 s), %s (1 min)"
 msgstr ""
 
-#: src/ui/indicator.js:268
+#: src/ui/indicator.js:306
 #, javascript-format
 msgid "Core %d"
 msgstr ""
 
-#: src/ui/indicator.js:278
+#: src/ui/indicator.js:316
 #, javascript-format
 msgid "Used %s of %s (%s), %s available"
 msgstr ""
 
-#: src/ui/indicator.js:285
+#: src/ui/indicator.js:323
 #, javascript-format
 msgid "zram: %s stored in %s of RAM (%s:1)"
 msgstr ""
 
-#: src/ui/indicator.js:287
+#: src/ui/indicator.js:325
 #, javascript-format
 msgid "zram: %s of %s used"
 msgstr ""
 
-#: src/ui/indicator.js:292
+#: src/ui/indicator.js:330
 #, javascript-format
 msgid "Swap on disk: %s of %s"
 msgstr ""
 
-#: src/ui/indicator.js:301
+#: src/ui/indicator.js:339
 #, javascript-format
 msgid "Stalled on memory: %s some, %s all tasks (10 s)"
 msgstr ""
 
-#: src/ui/indicator.js:313
+#: src/ui/indicator.js:351
 #, javascript-format
 msgid "%s: %s free of %s (%s used)"
 msgstr ""
 
-#: src/ui/indicator.js:320
+#: src/ui/indicator.js:358
 #, javascript-format
 msgid "%s: read %s, write %s, busy %s"
 msgstr ""
 
-#: src/ui/indicator.js:327
+#: src/ui/indicator.js:365
 #, javascript-format
 msgid "Stalled on I/O: %s some, %s all tasks (10 s)"
 msgstr ""
 
-#: src/ui/indicator.js:340
+#: src/ui/indicator.js:378
 #, javascript-format
 msgid "%s: asleep"
 msgstr ""
 
-#: src/ui/indicator.js:344
+#: src/ui/indicator.js:382
 #, javascript-format
 msgid "%s: busy %s, VRAM %s of %s"
 msgstr ""
 
-#: src/ui/indicator.js:378
+#: src/ui/indicator.js:437
+msgid "Measuring…"
+msgstr ""
+
+#: src/ui/indicator.js:441
+msgid "No process is busy"
+msgstr ""
+
+#: src/ui/indicator.js:444
+msgid "Shares of the load on physical cores"
+msgstr ""
+
+#: src/ui/indicator.js:451
+msgid "Private memory in RAM; shared memory is not counted"
+msgstr ""
+
+#: src/ui/indicator.js:472
 #, javascript-format
 msgid "limit %s"
 msgstr ""
 
-#: src/ui/indicator.js:385
+#: src/ui/indicator.js:479
 #, javascript-format
 msgid "%s: not connected"
 msgstr ""
